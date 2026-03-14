@@ -10,9 +10,12 @@ import {
   Plus,
   LogOut
 } from 'lucide-react';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from './firebase';
 import { Task, TaskStatus, ThemeType, Unavailability, User, UserData } from './types';
 import { THEMES } from './constants';
-import { mockAuthService } from './services/mockBackend';
+import { firebaseService } from './services/firebaseService';
+import { useLocalStorageState } from './hooks/useLocalStorageState';
 import Dashboard from './components/Dashboard';
 import TodoList from './components/Tasks/TodoList';
 import EisenhowerMatrix from './components/Matrix/EisenhowerMatrix';
@@ -21,113 +24,238 @@ import ProgressTracking from './components/Stats/ProgressTracking';
 import SmartPlanning from './components/Planning/SmartPlanning';
 import TaskModal from './components/Tasks/TaskModal';
 import AuthScreen from './components/Auth/AuthScreen';
+import Settings from './components/Settings';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Mail, RefreshCw, LogOut as LogOutIcon, Settings as SettingsIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isReloading, setIsReloading] = useState(false);
   
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Persistent UI state (still useful for UI-only preferences)
+  const [activeTab, setActiveTab] = useLocalStorageState<string>('evo_active_tab', 'dashboard');
+  const [theme, setTheme] = useState<ThemeType>('midnight');
+  
+  // Task and planning data (synced with Firestore)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([]);
-  const [theme, setTheme] = useState<ThemeType>('lime');
   
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
-  // Check for existing session on mount
+  // Auth state listener
   useEffect(() => {
-    const savedUser = localStorage.getItem('evo_current_user');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      handleLogin(user);
-    } else {
+    console.log("App: Initializing auth state listener");
+    firebaseService.testConnection();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("App: Auth state changed", user ? `User logged in: ${user.email}` : "No user");
+      if (user) {
+        setCurrentUser({
+          id: user.uid,
+          email: user.email || '',
+          name: user.displayName || 'Utilisateur'
+        });
+        setIsEmailVerified(user.emailVerified);
+      } else {
+        setCurrentUser(null);
+        setIsEmailVerified(false);
+      }
       setIsAuthLoading(false);
-    }
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Sync data with simulated SQL DB
-  useEffect(() => {
-    if (currentUser) {
-      const userData: UserData = { tasks, unavailabilities, theme };
-      mockAuthService.saveUserData(currentUser.id, userData);
-      
-      const currentThemeData = THEMES[theme];
-      document.body.style.backgroundColor = currentThemeData.hex;
-      if (theme === 'dark') document.body.classList.add('dark');
-      else document.body.classList.remove('dark');
+  const handleReloadUser = async () => {
+    setIsReloading(true);
+    try {
+      const user = await firebaseService.reloadUser();
+      if (user) {
+        setIsEmailVerified(user.emailVerified);
+      }
+    } catch (error) {
+      console.error("Erreur lors du rechargement de l'utilisateur:", error);
+    } finally {
+      setIsReloading(false);
     }
-  }, [tasks, theme, unavailabilities, currentUser]);
-
-  const handleLogin = async (user: User) => {
-    setCurrentUser(user);
-    localStorage.setItem('evo_current_user', JSON.stringify(user));
-    
-    // Load per-user data from SQL simulation
-    const userData = await mockAuthService.getUserData(user.id);
-    setTasks(userData.tasks);
-    setUnavailabilities(userData.unavailabilities);
-    setTheme(userData.theme);
-    
-    setIsAuthLoading(false);
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('evo_current_user');
+  const handleResendEmail = async () => {
+    try {
+      await firebaseService.resendVerificationEmail();
+      alert("Un nouvel email de vérification a été envoyé !");
+    } catch (error) {
+      console.error("Erreur lors de l'envoi de l'email:", error);
+    }
+  };
+
+  // Real-time Firestore sync
+  useEffect(() => {
+    if (!currentUser) {
+      setTasks([]);
+      setUnavailabilities([]);
+      return;
+    }
+
+    const unsubTasks = firebaseService.subscribeToTasks(currentUser.id, setTasks);
+    const unsubUnavail = firebaseService.subscribeToUnavailabilities(currentUser.id, setUnavailabilities);
+    const unsubUser = firebaseService.subscribeToUserData(currentUser.id, (data) => {
+      if (data.theme) setTheme(data.theme);
+    });
+
+    return () => {
+      unsubTasks();
+      unsubUnavail();
+      unsubUser();
+    };
+  }, [currentUser?.id]);
+
+  // Apply theme to body and CSS variables
+  useEffect(() => {
+    console.log("App: Applying theme", theme);
+    const themeData = THEMES[theme] || THEMES['midnight'];
+    const root = document.documentElement;
+    
+    if (!themeData) {
+      console.warn("App: Theme data not found for", theme);
+      return;
+    }
+
+    // Apply CSS variables for instant updates
+    try {
+      Object.entries(themeData.colors).forEach(([key, value]) => {
+        root.style.setProperty(`--${key}`, value);
+      });
+      
+      document.body.style.backgroundColor = themeData.colors.bg;
+      document.body.classList.add('dark');
+    } catch (err) {
+      console.error("App: Error applying theme colors", err);
+    }
+  }, [theme]);
+
+  const handleLogin = (user: User, emailVerified: boolean) => {
+    setCurrentUser(user);
+    setIsEmailVerified(emailVerified);
+  };
+
+  const handleLogout = async () => {
+    await firebaseService.logout();
     setActiveTab('dashboard');
   };
 
-  const addTask = (taskData: any) => {
-    const newTask: Task = {
+  const addTask = async (taskData: any) => {
+    if (!currentUser) return;
+    const newTask: Omit<Task, 'id'> = {
       ...taskData,
-      id: Math.random().toString(36).substr(2, 9),
       createdAt: Date.now(),
       actualMinutes: 0
     };
-    setTasks([...tasks, newTask]);
+    await firebaseService.addTask(currentUser.id, newTask);
     setIsTaskModalOpen(false);
   };
 
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks(tasks.map(t => {
-      if (t.id === id) {
-        const isNowDone = updates.status === TaskStatus.DONE && t.status !== TaskStatus.DONE;
-        return { 
-          ...t, 
-          ...updates, 
-          completedAt: isNowDone ? Date.now() : (updates.status === TaskStatus.TODO ? undefined : t.completedAt)
-        };
-      }
-      return t;
-    }));
+  const updateTask = async (id: string, updates: Partial<Task>) => {
+    if (!currentUser) return;
+    
+    // Find the task to check status change
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      const isNowDone = updates.status === TaskStatus.DONE && task.status !== TaskStatus.DONE;
+      const finalUpdates = {
+        ...updates,
+        completedAt: isNowDone ? Date.now() : (updates.status === TaskStatus.TODO ? undefined : task.completedAt)
+      };
+      await firebaseService.updateTask(currentUser.id, id, finalUpdates);
+    }
+    
     setIsTaskModalOpen(false);
     setEditingTask(undefined);
   };
 
-  const addUnavailability = (unavail: Omit<Unavailability, 'id'>) => {
-    setUnavailabilities([...unavailabilities, { ...unavail, id: Math.random().toString(36).substr(2, 9) }]);
+  const addUnavailability = async (unavail: Omit<Unavailability, 'id'>) => {
+    if (!currentUser) return;
+    await firebaseService.addUnavailability(currentUser.id, unavail);
   };
 
-  const deleteUnavailability = (id: string) => {
-    setUnavailabilities(unavailabilities.filter(u => u.id !== id));
+  const deleteUnavailability = async (id: string) => {
+    if (!currentUser) return;
+    await firebaseService.deleteUnavailability(currentUser.id, id);
   };
+
+  const handleThemeChange = async (newTheme: ThemeType) => {
+    setTheme(newTheme);
+    if (currentUser) {
+      await firebaseService.updateTheme(currentUser.id, newTheme);
+    }
+  };
+
+  const currentTheme = THEMES[theme] || THEMES['midnight'];
+
+  console.log("App: Rendering", { isAuthLoading, hasUser: !!currentUser, isEmailVerified });
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fefce8]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-lime-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="font-black text-lime-900/40 uppercase tracking-[0.2em] text-xs">Initialisation de ta session...</p>
+          <div className="w-16 h-16 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="font-black text-[var(--text)] opacity-40 uppercase tracking-[0.2em] text-xs">Initialisation de ta session...</p>
         </div>
       </div>
     );
   }
 
   if (!currentUser) {
-    return <AuthScreen onLogin={handleLogin} />;
+    return (
+      <div className={`${currentTheme.bg} ${currentTheme.text}`}>
+        <AuthScreen onLogin={handleLogin} />
+      </div>
+    );
   }
 
-  const currentTheme = THEMES[theme];
+  if (!isEmailVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] p-6">
+        <div className={`max-w-md w-full ${currentTheme.card} rounded-[2.5rem] p-10 shadow-2xl border-4 ${currentTheme.accent}`}>
+          <div className="w-20 h-20 bg-[var(--primary)]/10 rounded-3xl flex items-center justify-center text-[var(--primary)] mx-auto mb-8">
+            <Mail size={40} strokeWidth={2.5} />
+          </div>
+          
+          <h2 className="text-3xl font-black text-center text-[var(--text)] mb-4 tracking-tighter">Vérifie ton email !</h2>
+          <p className="text-center text-[var(--text)] opacity-60 font-bold mb-8 leading-relaxed">
+            On t'a envoyé un lien de vérification à <span className="text-[var(--primary)]">{currentUser.email}</span>. 
+            Vérifie tes spams si tu ne le vois pas !
+          </p>
+
+          <div className="space-y-4">
+            <button
+              onClick={handleReloadUser}
+              disabled={isReloading}
+              className={`w-full ${currentTheme.button} py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50`}
+            >
+              <RefreshCw size={20} className={isReloading ? 'animate-spin' : ''} />
+              J'AI VÉRIFIÉ MON EMAIL
+            </button>
+
+            <button
+              onClick={handleResendEmail}
+              className="w-full bg-white/5 hover:bg-white/10 text-[var(--text)] opacity-60 py-5 rounded-2xl font-black text-sm transition-all active:scale-95"
+            >
+              RENVOYER L'EMAIL
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 py-4 text-xs font-black text-red-400 hover:text-red-500 transition-all uppercase tracking-widest"
+            >
+              <LogOutIcon size={16} /> Déconnexion
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -144,7 +272,7 @@ const App: React.FC = () => {
           />
         );
       case 'tasks':
-        return <TodoList tasks={tasks} onUpdateTask={updateTask} onDeleteTask={(id) => setTasks(tasks.filter(t => t.id !== id))} onEditTask={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }} onAddTask={() => setIsTaskModalOpen(true)} theme={theme} />;
+        return <TodoList tasks={tasks} onUpdateTask={updateTask} onDeleteTask={(id) => currentUser && firebaseService.deleteTask(currentUser.id, id)} onEditTask={(t) => { setEditingTask(t); setIsTaskModalOpen(true); }} onAddTask={() => setIsTaskModalOpen(true)} theme={theme} />;
       case 'matrix':
         return <EisenhowerMatrix tasks={tasks} onUpdateTask={updateTask} theme={theme} />;
       case 'planning':
@@ -153,6 +281,8 @@ const App: React.FC = () => {
         return <Pomodoro theme={theme} tasks={tasks} onUpdateTask={updateTask} />;
       case 'stats':
         return <ProgressTracking tasks={tasks} theme={theme} />;
+      case 'settings':
+        return <Settings theme={theme} onThemeChange={handleThemeChange} />;
       default:
         return <Dashboard tasks={tasks} theme={theme} unavailabilities={unavailabilities} onAddTask={() => setIsTaskModalOpen(true)} onUpdateTask={updateTask} onAddUnavailability={addUnavailability} onDeleteUnavailability={deleteUnavailability} />;
     }
@@ -165,6 +295,7 @@ const App: React.FC = () => {
     { id: 'planning', label: 'Planning IA', icon: CalendarDays },
     { id: 'focus', label: 'Focus', icon: Timer },
     { id: 'stats', label: 'Analyses', icon: BarChart3 },
+    { id: 'settings', label: 'Réglages', icon: SettingsIcon },
   ];
 
   return (
@@ -178,13 +309,13 @@ const App: React.FC = () => {
         </div>
         
         <div className="px-6 mb-4">
-          <div className="bg-black/5 dark:bg-white/5 p-4 rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-lime-950 font-black text-sm">
-              {currentUser.name.charAt(0).toUpperCase()}
+          <div className="bg-white/5 p-4 rounded-2xl flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full ${currentTheme.primary} flex items-center justify-center text-black font-black text-sm`}>
+              {(currentUser?.name || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-black truncate">{currentUser.name}</p>
-              <p className="text-[10px] opacity-40 font-bold truncate">{currentUser.email}</p>
+              <p className="text-xs font-black truncate">{currentUser?.name}</p>
+              <p className="text-[10px] opacity-40 font-bold truncate">{currentUser?.email}</p>
             </div>
           </div>
         </div>
@@ -197,7 +328,7 @@ const App: React.FC = () => {
               className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-300 ${
                 activeTab === item.id 
                 ? `${currentTheme.button} shadow-lg scale-[1.02]` 
-                : `hover:bg-black/5 text-slate-500 dark:text-slate-400 font-medium`
+                : `hover:bg-white/5 opacity-60 font-medium`
               }`}
             >
               <item.icon size={22} />
@@ -206,23 +337,10 @@ const App: React.FC = () => {
           ))}
         </nav>
 
-        <div className="p-6 border-t border-black/5 dark:border-white/5 space-y-6">
-          <div className="flex justify-between items-center px-2">
-            <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase opacity-50">Thèmes</span>
-            <div className="flex gap-2">
-              {(Object.keys(THEMES) as ThemeType[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTheme(t)}
-                  className={`w-7 h-7 rounded-full border-2 transition-all hover:scale-125 active:scale-95 ${theme === t ? 'border-slate-400 ring-2 ring-offset-2 ring-slate-200' : 'border-transparent'} ${THEMES[t].primary}`}
-                />
-              ))}
-            </div>
-          </div>
-          
+        <div className="p-6 border-t border-white/5 space-y-6">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-black text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all uppercase tracking-widest"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-black text-red-400 hover:bg-red-500/10 transition-all uppercase tracking-widest"
           >
             <LogOut size={16} /> Déconnexion
           </button>
@@ -231,7 +349,7 @@ const App: React.FC = () => {
 
       <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 ${currentTheme.card} border-t ${currentTheme.accent} px-2 py-3 flex justify-around shadow-2xl`}>
         {navItems.map((item) => (
-          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center gap-1 p-2 ${activeTab === item.id ? currentTheme.secondary : 'text-slate-400'}`}>
+          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center gap-1 p-2 ${activeTab === item.id ? currentTheme.secondary : 'opacity-40'}`}>
             <item.icon size={20} />
             <span className="text-[10px] font-bold">{item.label}</span>
           </button>
@@ -241,7 +359,7 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 max-w-7xl mx-auto w-full transition-all duration-500">
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-black tracking-tighter">Salut {currentUser.name} ! 👋</h1>
+            <h1 className="text-3xl font-black tracking-tighter">Salut {currentUser?.name || 'toi'} ! 👋</h1>
             <p className="opacity-50 text-sm font-bold uppercase tracking-wider">C'est le moment de briller.</p>
           </div>
           <button 
@@ -263,7 +381,6 @@ const App: React.FC = () => {
           />
         )}
       </main>
-    </div>
   );
 };
 

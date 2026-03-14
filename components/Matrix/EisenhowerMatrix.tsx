@@ -11,7 +11,7 @@ interface EisenhowerMatrixProps {
 }
 
 const EisenhowerMatrix: React.FC<EisenhowerMatrixProps> = ({ tasks, onUpdateTask, theme }) => {
-  const currentTheme = THEMES[theme];
+  const currentTheme = THEMES[theme] || THEMES['midnight'];
 
   const getTasksByQuadrant = (quadrant: EisenhowerQuadrant) => {
     return tasks.filter(t => t.quadrant === quadrant && t.status !== TaskStatus.DONE);
@@ -41,27 +41,27 @@ const EisenhowerMatrix: React.FC<EisenhowerMatrixProps> = ({ tasks, onUpdateTask
             </div>
             <div>
               <h3 className="font-bold text-sm leading-none mb-1">{title}</h3>
-              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{description}</p>
+              <p className="text-[10px] text-[var(--text)]/50 uppercase tracking-tighter">{description}</p>
             </div>
           </div>
-          <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold">{quadrantTasks.length}</span>
+          <span className="bg-white/10 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold">{quadrantTasks.length}</span>
         </div>
         
         <div className="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar min-h-[100px]">
           {quadrantTasks.length === 0 ? (
-            <div className="h-full flex items-center justify-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl p-4 transition-colors group-hover/quad:border-slate-200">
-              <p className="text-[10px] text-slate-300 text-center italic">Aucune tâche ici.</p>
+            <div className="h-full flex items-center justify-center border-2 border-dashed border-white/5 rounded-2xl p-4 transition-colors group-hover/quad:border-white/10">
+              <p className="text-[10px] text-[var(--text)]/30 text-center italic">Aucune tâche ici.</p>
             </div>
           ) : (
             quadrantTasks.map(t => (
               <div 
                 key={t.id} 
-                className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 group relative"
+                className="p-3 bg-white/5 rounded-xl border border-white/10 group relative"
               >
                 <div className="text-xs font-semibold pr-6">{t.title}</div>
                 <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <select 
-                    className="bg-white dark:bg-slate-700 text-[9px] rounded border border-slate-200 p-0.5 outline-none"
+                    className="bg-[var(--card)] text-[9px] rounded border border-white/10 p-0.5 outline-none"
                     value={t.quadrant}
                     onChange={(e) => onUpdateTask(t.id, { quadrant: e.target.value as EisenhowerQuadrant })}
                   >
@@ -81,9 +81,9 @@ const EisenhowerMatrix: React.FC<EisenhowerMatrixProps> = ({ tasks, onUpdateTask
 
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 pb-8">
-      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30 flex items-center gap-3">
-        <ArrowRightLeft size={20} className="text-blue-500" />
-        <p className="text-xs text-blue-700 dark:text-blue-300">
+      <div className="bg-[var(--primary)]/10 p-4 rounded-2xl border border-[var(--primary)]/20 flex items-center gap-3">
+        <ArrowRightLeft size={20} className="text-[var(--primary)]" />
+        <p className="text-xs text-[var(--text)]">
           <strong>Gestion des priorités :</strong> Survole une tâche pour changer son quadrant. L'IA utilisera cette répartition pour ton planning.
         </p>
       </div>
@@ -114,7 +114,7 @@ const EisenhowerMatrix: React.FC<EisenhowerMatrixProps> = ({ tasks, onUpdateTask
           type={EisenhowerQuadrant.ELIMINATE} 
           title="Ni l'un ni l'autre" 
           icon={Trash} 
-          colorClass="bg-slate-500"
+          colorClass="bg-zinc-500"
           description="A faire en dernier"
         />
       </div>

@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and preferences",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "theme": { "type": "string", "enum": ["lime", "blue", "purple", "dark"] }
+      },
+      "required": ["email", "name", "theme"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A productivity task",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+        "quadrant": { "type": "string", "enum": ["do_first", "schedule", "delegate", "eliminate"] },
+        "dueDate": { "type": "string" },
+        "estimatedMinutes": { "type": "number" },
+        "actualMinutes": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "completedAt": { "type": "number" }
+      },
+      "required": ["title", "status", "priority", "difficulty", "quadrant", "estimatedMinutes", "actualMinutes", "createdAt"]
+    },
+    "Unavailability": {
+      "title": "Unavailability",
+      "description": "Time slots when the user is not available",
+      "type": "object",
+      "properties": {
+        "day": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "required": ["day", "startTime", "endTime", "reason"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile"
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "User tasks"
+    },
+    "/users/{userId}/unavailabilities/{unavailabilityId}": {
+      "schema": "Unavailability",
+      "description": "User unavailabilities"
+    }
+  }
+}

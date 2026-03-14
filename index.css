@@ -1,0 +1,20 @@
+
+@import "tailwindcss";
+
+:root {
+  --primary: #d4af37;
+  --secondary: #c5a028;
+  --bg: #000000;
+  --text: #ffffff;
+  --card: rgba(20, 20, 20, 0.8);
+  --accent: rgba(212, 175, 55, 0.2);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.dark {
+  color-scheme: dark;
+}

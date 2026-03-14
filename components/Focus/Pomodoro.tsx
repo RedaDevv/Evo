@@ -11,7 +11,7 @@ interface PomodoroProps {
 }
 
 const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask }) => {
-  const currentTheme = THEMES[theme];
+  const currentTheme = THEMES[theme] || THEMES['midnight'];
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState<'work' | 'break'>('work');
@@ -71,16 +71,16 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask }) => {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-10 animate-in fade-in scale-95 duration-500">
-      <div className="flex gap-4 p-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex gap-4 p-1 bg-white/5 rounded-2xl border border-white/10 shadow-sm">
         <button 
           onClick={() => { setMode('work'); setTimeLeft(25 * 60); setIsActive(false); }}
-          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'work' ? `${currentTheme.primary} text-white` : 'text-slate-500 hover:bg-slate-50'}`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'work' ? `${currentTheme.primary} text-white` : 'opacity-60 hover:bg-white/5'}`}
         >
           <Brain size={18} /> Travail
         </button>
         <button 
           onClick={() => { setMode('break'); setTimeLeft(5 * 60); setIsActive(false); }}
-          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'break' ? `${currentTheme.primary} text-white` : 'text-slate-500 hover:bg-slate-50'}`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'break' ? `${currentTheme.primary} text-white` : 'opacity-60 hover:bg-white/5'}`}
         >
           <Coffee size={18} /> Pause
         </button>
@@ -88,7 +88,7 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask }) => {
 
       <div className="relative flex items-center justify-center">
         {/* Animated Circle */}
-        <div className="w-64 h-64 md:w-80 md:h-80 rounded-full border-[12px] border-slate-100 dark:border-slate-800 flex items-center justify-center relative overflow-hidden">
+        <div className="w-64 h-64 md:w-80 md:h-80 rounded-full border-[12px] border-white/5 flex items-center justify-center relative overflow-hidden">
             <div 
               className={`absolute bottom-0 w-full transition-all duration-1000 ease-linear ${currentTheme.primary} opacity-10`} 
               style={{ height: `${progress}%` }} 
@@ -102,7 +102,7 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask }) => {
       <div className="flex gap-6 items-center">
         <button 
           onClick={resetTimer}
-          className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 transition-all"
+          className="p-4 rounded-full bg-white/5 text-[var(--text)] opacity-60 hover:bg-white/10 transition-all"
         >
           <RotateCcw size={28} />
         </button>
@@ -113,16 +113,16 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask }) => {
           {isActive ? <Pause size={40} fill="currentColor" /> : <Play size={40} fill="currentColor" />}
         </button>
         <button 
-          className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 transition-all"
+          className="p-4 rounded-full bg-white/5 text-[var(--text)] opacity-60 hover:bg-white/10 transition-all"
         >
           <Bell size={28} />
         </button>
       </div>
 
       <div className="w-full max-w-md">
-        <h3 className="text-center font-bold text-slate-400 mb-4 text-xs uppercase tracking-widest">Sur quelle tâche travailles-tu ?</h3>
+        <h3 className="text-center font-bold opacity-40 mb-4 text-xs uppercase tracking-widest">Sur quelle tâche travailles-tu ?</h3>
         <select 
-          className={`w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-3 text-sm focus:ring-2 ring-blue-500 outline-none transition-all`}
+          className={`w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm focus:ring-2 ring-[var(--primary)] outline-none transition-all`}
           value={selectedTask || ''}
           onChange={(e) => setSelectedTask(e.target.value)}
         >

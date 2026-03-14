@@ -54,7 +54,19 @@ export interface Task {
   completedAt?: number;
 }
 
-export type ThemeType = 'lime' | 'blue' | 'purple' | 'dark';
+export type ThemeType = 
+  | 'cyberpunk' 
+  | 'emerald' 
+  | 'ocean' 
+  | 'dracula' 
+  | 'nord' 
+  | 'volcano' 
+  | 'sunset' 
+  | 'midnight' 
+  | 'forest' 
+  | 'slate' 
+  | 'rose' 
+  | 'neon';
 
 export interface UserData {
   tasks: Task[];

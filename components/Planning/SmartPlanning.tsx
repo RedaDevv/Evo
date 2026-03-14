@@ -12,7 +12,7 @@ interface SmartPlanningProps {
 }
 
 const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, theme }) => {
-  const currentTheme = THEMES[theme];
+  const currentTheme = THEMES[theme] || THEMES['midnight'];
   const [planning, setPlanning] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [justification, setJustification] = useState('');
@@ -86,10 +86,10 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
         
         <div className="relative z-10">
           <h2 className="text-3xl font-black mb-4 flex items-center gap-3">
-            <Sparkles className="text-amber-400" /> Planning Sur-Mesure
+            <Sparkles className="text-[var(--primary)]" /> Planning Sur-Mesure
           </h2>
-          <p className="text-slate-500 max-w-2xl mb-8">
-            L'IA prend désormais en compte tes <span className="font-bold text-slate-800 dark:text-white">{unavailabilities.length} créneaux bloqués</span> pour te proposer un emploi du temps 100% réaliste.
+          <p className="text-[var(--text)]/60 max-w-2xl mb-8">
+            L'IA prend désormais en compte tes <span className="font-bold text-[var(--text)]">{unavailabilities.length} créneaux bloqués</span> pour te proposer un emploi du temps 100% réaliste.
           </p>
           
           <button 
@@ -104,9 +104,9 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
       </div>
 
       {justification && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30 flex items-start gap-3">
-          <Info className="text-amber-500 mt-1 flex-shrink-0" />
-          <p className="text-sm text-amber-800 dark:text-amber-200 italic">{justification}</p>
+        <div className="bg-[var(--primary)]/10 p-4 rounded-2xl border border-[var(--primary)]/20 flex items-start gap-3">
+          <Info className="text-[var(--primary)] mt-1 flex-shrink-0" />
+          <p className="text-sm text-[var(--text)] italic">{justification}</p>
         </div>
       )}
 
@@ -122,24 +122,24 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
                 {/* Fixed: Moved 'title' from Lock icon to a wrapping span to fix TypeScript error */}
                 {unavailabilities.some(u => u.day === dayData.day) && (
                   <span title="Contraintes détectées">
-                    <Lock size={14} className="text-slate-300" />
+                    <Lock size={14} className="opacity-30" />
                   </span>
                 )}
               </div>
               <div className="space-y-4">
                 {dayData.slots.map((slot: any, sIdx: number) => (
-                  <div key={sIdx} className="relative pl-4 border-l-2 border-slate-100 dark:border-slate-800 py-1">
-                    <div className="absolute left-[-5px] top-2 w-2 h-2 rounded-full bg-slate-300" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{slot.time}</span>
+                  <div key={sIdx} className="relative pl-4 border-l-2 border-white/10 py-1">
+                    <div className="absolute left-[-5px] top-2 w-2 h-2 rounded-full bg-[var(--primary)]" />
+                    <span className="text-[10px] font-bold text-[var(--text)]/50 uppercase tracking-widest">{slot.time}</span>
                     <p className="font-bold text-sm leading-tight">{slot.task}</p>
-                    <p className="text-[10px] text-slate-400 mt-1 italic leading-tight">{slot.reason}</p>
+                    <p className="text-[10px] text-[var(--text)]/40 mt-1 italic leading-tight">{slot.reason}</p>
                   </div>
                 ))}
               </div>
             </div>
           ))
         ) : !isLoading && (
-          <div className="col-span-full py-20 text-center text-slate-400">
+          <div className="col-span-full py-20 text-center text-[var(--text)]/40">
             {tasks.filter(t => t.status !== TaskStatus.DONE).length === 0 
               ? "Ajoute des tâches pour voir l'IA à l'œuvre ! 📝"
               : "Clique sur le bouton pour que l'IA contourne tes créneaux bloqués."}

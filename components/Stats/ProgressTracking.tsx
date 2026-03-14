@@ -10,7 +10,7 @@ interface ProgressTrackingProps {
 }
 
 const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme }) => {
-  const currentTheme = THEMES[theme];
+  const currentTheme = THEMES[theme] || THEMES['midnight'];
 
   // 1. Calculer les données des 7 derniers jours pour le graphique
   const weeklyData = useMemo(() => {
@@ -109,42 +109,49 @@ const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme }) => 
         <div className={`${currentTheme.card} rounded-3xl p-8 border ${currentTheme.accent} shadow-sm`}>
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold">Activité Hebdomadaire</h3>
-            <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-400">7 DERNIERS JOURS</span>
+            <span className="text-[10px] font-bold bg-white/10 border border-white/10 px-2 py-1 rounded text-[var(--text)]/40">7 DERNIERS JOURS</span>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--text)" strokeOpacity={0.1} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text)', fillOpacity: 0.5 }} />
                 <YAxis hide />
                 <Tooltip 
                   cursor={{ fill: 'transparent' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  contentStyle={{ 
+                    backgroundColor: 'var(--card)', 
+                    borderRadius: '12px', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    color: 'var(--text)'
+                  }}
+                  itemStyle={{ color: 'var(--text)' }}
                 />
                 <Bar dataKey="completed" radius={[6, 6, 0, 0]}>
                   {weeklyData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.completed >= entry.goal ? (theme === 'lime' ? '#84cc16' : '#3b82f6') : '#cbd5e1'} />
+                    <Cell key={`cell-${index}`} fill={entry.completed >= entry.goal ? (THEMES[theme] || THEMES['midnight']).colors.primary : 'var(--text)'} fillOpacity={entry.completed >= entry.goal ? 1 : 0.2} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-sm text-slate-400 mt-4 text-center">Tâches complétées par rapport à l'objectif quotidien</p>
+          <p className="text-sm text-[var(--text)]/40 mt-4 text-center">Tâches complétées par rapport à l'objectif quotidien</p>
         </div>
 
         <div className="flex flex-col gap-6">
           <div className={`${currentTheme.card} rounded-3xl p-6 border ${currentTheme.accent} shadow-sm flex-1 flex flex-col justify-center items-center text-center relative overflow-hidden group`}>
             <div className={`absolute inset-0 ${currentTheme.primary} opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none`} />
-            <span className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Temps Focus Total</span>
+            <span className="text-sm font-bold text-[var(--text)]/40 uppercase tracking-widest mb-2">Temps Focus Total</span>
             <h4 className="text-5xl font-black mb-1 tabular-nums">{Math.floor(totalFocusTime / 60)}h {totalFocusTime % 60}m</h4>
-            <p className="text-sm text-slate-500">investis dans ta réussite</p>
+            <p className="text-sm text-[var(--text)]/60">investis dans ta réussite</p>
           </div>
           
           <div className={`${currentTheme.card} rounded-3xl p-6 border ${currentTheme.accent} shadow-sm flex-1 flex flex-col justify-center items-center text-center relative overflow-hidden group`}>
              <div className="absolute -right-4 -top-4 text-6xl opacity-10 grayscale group-hover:grayscale-0 transition-all duration-500">🔥</div>
-            <span className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Série Actuelle</span>
+            <span className="text-sm font-bold text-[var(--text)]/40 uppercase tracking-widest mb-2">Série Actuelle</span>
             <h4 className="text-5xl font-black mb-1 tabular-nums">{streak} Jours</h4>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[var(--text)]/60">
               {streak === 0 ? "Commence ta série aujourd'hui !" : "La régularité est la clé du succès."}
             </p>
           </div>
@@ -154,16 +161,16 @@ const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme }) => 
       <div className={`${currentTheme.card} rounded-3xl p-8 border ${currentTheme.accent} shadow-sm`}>
          <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold">Profil d'Étudiant</h3>
-            <p className="text-xs text-slate-400">Basé sur ton activité récente</p>
+            <p className="text-xs text-[var(--text)]/40">Basé sur ton activité récente</p>
          </div>
          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <ProgressBar label="Organisation" progress={metrics.organisation} color="bg-blue-500" description="Capacité à classer les tâches par importance." />
-              <ProgressBar label="Discipline (Focus)" progress={metrics.discipline} color="bg-purple-500" description="Respect des temps de travail prévus." />
+              <ProgressBar label="Organisation" progress={metrics.organisation} color="bg-[var(--primary)]" description="Capacité à classer les tâches par importance." />
+              <ProgressBar label="Discipline (Focus)" progress={metrics.discipline} color="bg-[var(--secondary)]" description="Respect des temps de travail prévus." />
             </div>
             <div className="space-y-6">
-              <ProgressBar label="Priorisation" progress={metrics.priorisation} color="bg-lime-500" description="Efficacité sur les tâches critiques." />
-              <ProgressBar label="Assiduité" progress={metrics.assiduite} color="bg-orange-500" description="Taux global de complétion des objectifs." />
+              <ProgressBar label="Priorisation" progress={metrics.priorisation} color="bg-[var(--primary)]" description="Efficacité sur les tâches critiques." />
+              <ProgressBar label="Assiduité" progress={metrics.assiduite} color="bg-[var(--secondary)]" description="Taux global de complétion des objectifs." />
             </div>
          </div>
       </div>
@@ -174,16 +181,16 @@ const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme }) => 
 const ProgressBar = ({ label, progress, color, description }: { label: string; progress: number; color: string; description: string }) => (
   <div className="space-y-2">
     <div className="flex justify-between text-xs font-bold px-1">
-      <span className="text-slate-700 dark:text-slate-300 uppercase tracking-tight">{label}</span>
+      <span className="text-[var(--text)] uppercase tracking-tight">{label}</span>
       <span className="tabular-nums font-black">{progress}%</span>
     </div>
-    <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+    <div className="h-4 bg-white/10 rounded-full overflow-hidden shadow-inner">
       <div 
         className={`h-full ${color} rounded-full transition-all duration-1000 ease-out shadow-lg`} 
         style={{ width: `${progress}%` }} 
       />
     </div>
-    <p className="text-[10px] text-slate-400 italic px-1">{description}</p>
+    <p className="text-[10px] text-[var(--text)]/40 italic px-1">{description}</p>
   </div>
 );
 

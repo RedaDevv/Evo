@@ -22,7 +22,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onAddUnavailability, 
   onDeleteUnavailability 
 }) => {
-  const currentTheme = THEMES[theme];
+  const currentTheme = THEMES[theme] || THEMES['midnight'];
   
   const [newUnavail, setNewUnavail] = useState({ day: 'Lundi', startTime: '08:00', endTime: '12:00', reason: 'Cours' });
 
@@ -72,24 +72,24 @@ const Dashboard: React.FC<DashboardProps> = ({
               <h3 className="text-2xl font-black flex items-center gap-3 tracking-tight">
                 <Clock3 className={currentTheme.secondary} size={28} /> Mon Temps Bloqué
               </h3>
-              <span className="text-[10px] font-black opacity-30 bg-black/5 px-3 py-1 rounded-full uppercase tracking-widest">Zone IA Off</span>
+              <span className="text-[10px] font-black opacity-30 bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">Zone IA Off</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <div className="bg-black/5 dark:bg-white/5 p-8 rounded-[2rem] space-y-5">
+              <div className="bg-white/5 p-8 rounded-[2rem] space-y-5">
                 <div className="space-y-4">
                   <select 
                     value={newUnavail.day} 
                     onChange={(e) => setNewUnavail({...newUnavail, day: e.target.value})}
-                    className="w-full bg-white dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-black/5"
+                    className="w-full bg-white/5 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-white/5"
                   >
                     {days.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <div className="flex gap-3">
-                    <input type="time" value={newUnavail.startTime} onChange={(e) => setNewUnavail({...newUnavail, startTime: e.target.value})} className="flex-1 bg-white dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-black/5" />
-                    <input type="time" value={newUnavail.endTime} onChange={(e) => setNewUnavail({...newUnavail, endTime: e.target.value})} className="flex-1 bg-white dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-black/5" />
+                    <input type="time" value={newUnavail.startTime} onChange={(e) => setNewUnavail({...newUnavail, startTime: e.target.value})} className="flex-1 bg-white/5 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-white/5" />
+                    <input type="time" value={newUnavail.endTime} onChange={(e) => setNewUnavail({...newUnavail, endTime: e.target.value})} className="flex-1 bg-white/5 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-white/5" />
                   </div>
-                  <input type="text" placeholder="Raison (Cours, Sport...)" value={newUnavail.reason} onChange={(e) => setNewUnavail({...newUnavail, reason: e.target.value})} className="w-full bg-white dark:bg-slate-800 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-black/5" />
+                  <input type="text" placeholder="Raison (Cours, Sport...)" value={newUnavail.reason} onChange={(e) => setNewUnavail({...newUnavail, reason: e.target.value})} className="w-full bg-white/5 border-none rounded-2xl px-5 py-3 text-sm font-bold shadow-sm outline-none focus:ring-4 ring-white/5" />
                   <button onClick={() => onAddUnavailability(newUnavail)} className={`w-full ${currentTheme.button} font-black py-4 rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] active:scale-95 transition-all`}>
                     <Plus size={18} strokeWidth={3} /> Ajouter ce blocage
                   </button>
@@ -98,17 +98,17 @@ const Dashboard: React.FC<DashboardProps> = ({
 
               <div className="space-y-4 overflow-y-auto max-h-[300px] pr-4 custom-scrollbar">
                 {unavailabilities.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center border-4 border-dashed border-black/5 dark:border-white/5 rounded-[2.5rem] p-10 text-center">
+                  <div className="h-full flex flex-col items-center justify-center border-4 border-dashed border-white/5 rounded-[2.5rem] p-10 text-center">
                     <p className="text-sm font-bold opacity-30 italic">Aucune contrainte enregistrée.</p>
                   </div>
                 ) : (
                   unavailabilities.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-5 bg-white dark:bg-slate-800/50 rounded-2xl border border-black/5 group hover:border-black/20 transition-all hover:translate-x-1 shadow-sm">
+                    <div key={u.id} className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:translate-x-1 shadow-sm">
                       <div>
                         <p className="text-sm font-black">{u.day} • {u.reason}</p>
                         <p className="text-[11px] opacity-40 font-bold tracking-wider">{u.startTime} — {u.endTime}</p>
                       </div>
-                      <button onClick={() => onDeleteUnavailability(u.id)} className="p-2 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 rounded-xl">
+                      <button onClick={() => onDeleteUnavailability(u.id)} className="p-2 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10 rounded-xl">
                         <X size={20} strokeWidth={3} />
                       </button>
                     </div>
@@ -134,13 +134,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                 form.reset();
               }
             }} className="space-y-5">
-              <input name="taskTitle" type="text" placeholder="Une idée ? Note-la !" className="w-full bg-black/5 dark:bg-white/5 border-none rounded-2xl px-6 py-5 text-sm font-bold focus:ring-4 ring-black/5 outline-none transition-all" />
+              <input name="taskTitle" type="text" placeholder="Une idée ? Note-la !" className="w-full bg-white/5 border-none rounded-2xl px-6 py-5 text-sm font-bold focus:ring-4 ring-white/5 outline-none transition-all" />
               <button className={`w-full ${currentTheme.button} font-black py-5 rounded-2xl shadow-2xl uppercase text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all`}>
                 AJOUTER À MA LISTE
               </button>
             </form>
           </div>
-          <div className={`${currentTheme.card} rounded-[2.5rem] p-8 border ${currentTheme.accent} shadow-2xl shadow-black/5 transition-all duration-700 border-l-8 border-l-lime-400`}>
+          <div className={`${currentTheme.card} rounded-[2.5rem] p-8 border ${currentTheme.accent} shadow-2xl shadow-black/5 transition-all duration-700 border-l-8 border-l-[var(--primary)]`}>
             <h3 className="font-black text-lg mb-3 flex items-center gap-2 tracking-tight">🤖 EVO COACH</h3>
             <p className="text-sm opacity-60 leading-relaxed italic font-bold">
               "Le succès n'est pas un sprint, c'est une suite de petites habitudes. Bloque tes heures de sommeil, c'est ta priorité n°1."
@@ -153,10 +153,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 const StatCard: React.FC<{ label: string; value: string; icon: any; color: string; theme: ThemeType }> = ({ label, value, icon: Icon, color, theme }) => {
-  const currentTheme = THEMES[theme];
+  const currentTheme = THEMES[theme] || THEMES['midnight'];
   return (
     <div className={`${currentTheme.card} rounded-[2rem] p-6 border ${currentTheme.accent} shadow-xl shadow-black/5 flex items-center gap-5 transition-all hover:-translate-y-2 hover:shadow-2xl`}>
-      <div className={`p-4 rounded-2xl bg-black/5 dark:bg-white/5 ${color} shadow-inner`}><Icon size={28} strokeWidth={2.5} /></div>
+      <div className={`p-4 rounded-2xl bg-white/5 ${color} shadow-inner`}><Icon size={28} strokeWidth={2.5} /></div>
       <div>
         <p className="text-[11px] font-black opacity-30 uppercase tracking-[0.15em] mb-1">{label}</p>
         <p className="text-2xl font-black tracking-tighter tabular-nums">{value}</p>
