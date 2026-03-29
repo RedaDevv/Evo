@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { Task, TaskStatus, ThemeType, TaskPriority, EisenhowerQuadrant, Unavailability } from '../types';
+import { Task, TaskStatus, ThemeType, TaskPriority, EisenhowerQuadrant, Unavailability, UserData } from '../types';
 import { THEMES } from '../constants';
-import { CheckCircle2, Clock, Calendar, TrendingUp, Plus, Target, X, Clock3 } from 'lucide-react';
+import { CheckCircle2, Clock, Calendar, TrendingUp, Plus, Target, X, Clock3, BellRing } from 'lucide-react';
 
 interface DashboardProps {
   tasks: Task[];
@@ -12,6 +12,8 @@ interface DashboardProps {
   onUpdateTask: (id: string, updates: any) => void;
   onAddUnavailability: (unavail: Omit<Unavailability, 'id'>) => void;
   onDeleteUnavailability: (id: string) => void;
+  userData: Partial<UserData>;
+  onGoToSettings: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
@@ -20,9 +22,11 @@ const Dashboard: React.FC<DashboardProps> = ({
   unavailabilities, 
   onAddTask, 
   onAddUnavailability, 
-  onDeleteUnavailability 
+  onDeleteUnavailability,
+  userData,
+  onGoToSettings
 }) => {
-  const currentTheme = THEMES[theme] || THEMES['midnight'];
+  const currentTheme = THEMES[theme];
   
   const [newUnavail, setNewUnavail] = useState({ day: 'Lundi', startTime: '08:00', endTime: '12:00', reason: 'Cours' });
 
@@ -35,6 +39,27 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+      {/* Notification Banner */}
+      {!userData.notificationsEnabled && (
+        <div className={`${currentTheme.card} p-6 rounded-3xl border-2 border-dashed border-amber-500/20 bg-amber-500/5 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500`}>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500">
+              <BellRing size={24} />
+            </div>
+            <div>
+              <h4 className="font-black text-sm">Active les notifications !</h4>
+              <p className="text-xs font-bold opacity-60">Ne rate plus aucun rappel de tes tâches importantes.</p>
+            </div>
+          </div>
+          <button 
+            onClick={onGoToSettings}
+            className="px-6 py-3 bg-amber-500 text-black rounded-xl font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg shadow-amber-500/20"
+          >
+            ACTIVER MAINTENANT
+          </button>
+        </div>
+      )}
+
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Terminées" value={completedTasks.length.toString()} icon={CheckCircle2} color="text-emerald-500" theme={theme} />
@@ -153,7 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 };
 
 const StatCard: React.FC<{ label: string; value: string; icon: any; color: string; theme: ThemeType }> = ({ label, value, icon: Icon, color, theme }) => {
-  const currentTheme = THEMES[theme] || THEMES['midnight'];
+  const currentTheme = THEMES[theme];
   return (
     <div className={`${currentTheme.card} rounded-[2rem] p-6 border ${currentTheme.accent} shadow-xl shadow-black/5 flex items-center gap-5 transition-all hover:-translate-y-2 hover:shadow-2xl`}>
       <div className={`p-4 rounded-2xl bg-white/5 ${color} shadow-inner`}><Icon size={28} strokeWidth={2.5} /></div>

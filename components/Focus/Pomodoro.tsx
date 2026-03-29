@@ -1,17 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Task, TaskStatus, ThemeType } from '../../types';
+import { Task, TaskStatus, ThemeType, UserData } from '../../types';
 import { THEMES } from '../../constants';
 import { Play, Pause, RotateCcw, Coffee, Brain, Bell } from 'lucide-react';
+import { notificationService } from '../../services/notificationService';
 
 interface PomodoroProps {
   theme: ThemeType;
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  userData: Partial<UserData>;
 }
 
-const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask }) => {
-  const currentTheme = THEMES[theme] || THEMES['midnight'];
+const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userData }) => {
+  const currentTheme = THEMES[theme];
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState<'work' | 'break'>('work');
@@ -47,11 +49,27 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask }) => {
       }
       setMode('break');
       setTimeLeft(5 * 60);
-      alert("C'est l'heure de la pause ! ☕️");
+      
+      if (userData.notificationsEnabled && userData.notificationSettings?.pomodoroAlerts !== false) {
+        notificationService.sendNotification("C'est l'heure de la pause ! ☕️", {
+          body: "Bravo pour ta session de travail. Prends 5 minutes pour souffler.",
+          tag: 'pomodoro-break'
+        });
+      } else {
+        alert("C'est l'heure de la pause ! ☕️");
+      }
     } else {
       setMode('work');
       setTimeLeft(25 * 60);
-      alert("Au travail ! 💪");
+      
+      if (userData.notificationsEnabled && userData.notificationSettings?.pomodoroAlerts !== false) {
+        notificationService.sendNotification("Au travail ! 💪", {
+          body: "Ta pause est finie. C'est reparti pour 25 minutes de focus.",
+          tag: 'pomodoro-work'
+        });
+      } else {
+        alert("Au travail ! 💪");
+      }
     }
   };
 

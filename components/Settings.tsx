@@ -1,21 +1,84 @@
 
-import React from 'react';
-import { ThemeType } from '../types';
+import React, { useState } from 'react';
+import { ThemeType, UserData, NotificationSettings, DisplayMode } from '../types';
 import { THEMES } from '../constants';
-import { Settings as SettingsIcon, Palette, Shield, Bell, User } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Shield, Bell, User, Save, BellRing, Check, X, Monitor, Smartphone } from 'lucide-react';
+import { notificationService } from '../services/notificationService';
 
 interface SettingsProps {
   theme: ThemeType;
   onThemeChange: (theme: ThemeType) => void;
+  userData: Partial<UserData>;
+  onUpdateUserData: (updates: Partial<UserData>) => void;
+  onUpdateProfileName: (name: string) => Promise<void>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ theme, onThemeChange }) => {
-  const currentTheme = THEMES[theme] || THEMES['midnight'];
+const Settings: React.FC<SettingsProps> = ({ 
+  theme, 
+  onThemeChange, 
+  userData, 
+  onUpdateUserData,
+  onUpdateProfileName
+}) => {
+  const currentTheme = THEMES[theme];
+  const [newName, setNewName] = useState(userData.name || '');
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+  const handleSaveName = async () => {
+    if (!newName.trim() || newName === userData.name) return;
+    setIsSavingName(true);
+    try {
+      await onUpdateProfileName(newName);
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error("Error updating name:", error);
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  const toggleNotification = async () => {
+    const currentStatus = userData.notificationsEnabled;
+    if (!currentStatus) {
+      const permission = await notificationService.requestPermission();
+      if (permission === 'granted') {
+        onUpdateUserData({ notificationsEnabled: true });
+        notificationService.sendNotification("Notifications activées !", {
+          body: "Tu recevras désormais tes rappels et alertes ici."
+        });
+      } else {
+        alert("Tu dois autoriser les notifications dans ton navigateur pour activer cette option.");
+      }
+    } else {
+      onUpdateUserData({ notificationsEnabled: false });
+    }
+  };
+
+  const updateNotificationPref = (key: keyof NotificationSettings, value: boolean) => {
+    const currentPrefs = userData.notificationSettings || {
+      taskReminders: true,
+      pomodoroAlerts: true,
+      smartPlanningUpdates: true
+    };
+    onUpdateUserData({
+      notificationSettings: {
+        ...currentPrefs,
+        [key]: value
+      }
+    });
+  };
+
+  const handleTestNotification = () => {
+    notificationService.testNotification();
+  };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      {/* Thèmes */}
       <section>
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-8">
           <div className={`p-3 rounded-2xl ${currentTheme.primary} text-white shadow-lg`}>
             <Palette size={24} />
           </div>
@@ -54,7 +117,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, onThemeChange }) => {
               
               {theme === t && (
                 <div className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--primary)] rounded-full flex items-center justify-center text-black">
-                  <SettingsIcon size={12} strokeWidth={3} />
+                  <Check size={12} strokeWidth={3} />
                 </div>
               )}
             </button>
@@ -62,26 +125,206 @@ const Settings: React.FC<SettingsProps> = ({ theme, onThemeChange }) => {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} opacity-50 cursor-not-allowed`}>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 rounded-xl bg-white/5">
-              <User size={20} />
-            </div>
-            <h3 className="font-black tracking-tight">Profil & Compte</h3>
+      {/* Mode d'affichage */}
+      <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} shadow-xl`}>
+        <div className="flex items-center gap-4 mb-8">
+          <div className="p-3 rounded-xl bg-white/5 text-[var(--primary)]">
+            <Monitor size={24} />
           </div>
-          <p className="text-xs font-bold opacity-60">Gère tes informations personnelles et tes préférences de compte.</p>
+          <div>
+            <h3 className="text-xl font-black tracking-tight">Mode d'affichage</h3>
+            <p className="text-xs font-bold opacity-50 uppercase tracking-wider">Optimise ton interface</p>
+          </div>
         </div>
 
-        <div className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} opacity-50 cursor-not-allowed`}>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 rounded-xl bg-white/5">
-              <Bell size={20} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => onUpdateUserData({ displayMode: 'computer' })}
+            className={`flex items-center gap-4 p-6 rounded-3xl border-2 transition-all ${
+              userData.displayMode === 'computer' || !userData.displayMode
+                ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+                : 'border-white/5 hover:border-white/10'
+            }`}
+          >
+            <div className={`p-3 rounded-2xl ${userData.displayMode === 'computer' || !userData.displayMode ? 'bg-[var(--primary)] text-black' : 'bg-white/5 opacity-40'}`}>
+              <Monitor size={24} />
             </div>
-            <h3 className="font-black tracking-tight">Notifications</h3>
-          </div>
-          <p className="text-xs font-bold opacity-60">Configure tes rappels de tâches et alertes de planning.</p>
+            <div className="text-left">
+              <h4 className="text-sm font-black">Ordinateur</h4>
+              <p className="text-[10px] font-bold opacity-50">Interface complète</p>
+            </div>
+            {(userData.displayMode === 'computer' || !userData.displayMode) && (
+              <div className="ml-auto w-6 h-6 bg-[var(--primary)] rounded-full flex items-center justify-center text-black">
+                <Check size={12} strokeWidth={3} />
+              </div>
+            )}
+          </button>
+
+          <button
+            onClick={() => onUpdateUserData({ displayMode: 'phone' })}
+            className={`flex items-center gap-4 p-6 rounded-3xl border-2 transition-all ${
+              userData.displayMode === 'phone'
+                ? 'border-[var(--primary)] bg-[var(--primary)]/5'
+                : 'border-white/5 hover:border-white/10'
+            }`}
+          >
+            <div className={`p-3 rounded-2xl ${userData.displayMode === 'phone' ? 'bg-[var(--primary)] text-black' : 'bg-white/5 opacity-40'}`}>
+              <Smartphone size={24} />
+            </div>
+            <div className="text-left">
+              <h4 className="text-sm font-black">Mobile</h4>
+              <p className="text-[10px] font-bold opacity-50">Interface épurée</p>
+            </div>
+            {userData.displayMode === 'phone' && (
+              <div className="ml-auto w-6 h-6 bg-[var(--primary)] rounded-full flex items-center justify-center text-black">
+                <Check size={12} strokeWidth={3} />
+              </div>
+            )}
+          </button>
         </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Profil & Compte */}
+        <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} shadow-xl`}>
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 rounded-xl bg-white/5 text-[var(--primary)]">
+              <User size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight">Profil & Compte</h3>
+              <p className="text-xs font-bold opacity-50 uppercase tracking-wider">Tes informations personnelles</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ml-1">Nom d'utilisateur</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Ton nom"
+                  className="w-full bg-white/5 border-2 border-white/5 rounded-2xl px-6 py-4 font-bold focus:border-[var(--primary)] outline-none transition-all"
+                />
+                {newName !== userData.name && (
+                  <button 
+                    onClick={handleSaveName}
+                    disabled={isSavingName}
+                    className="absolute right-2 top-2 bottom-2 px-4 bg-[var(--primary)] text-black rounded-xl font-black text-xs flex items-center gap-2 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isSavingName ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
+                    ENREGISTRER
+                  </button>
+                )}
+                {showSaveSuccess && (
+                  <div className="absolute right-2 top-2 bottom-2 px-4 bg-green-500 text-white rounded-xl font-black text-xs flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                    <Check size={16} />
+                    MODIFIÉ !
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest opacity-40 mb-2 ml-1">Adresse Email</label>
+              <input 
+                type="email" 
+                value={userData.email || ''} 
+                disabled
+                className="w-full bg-white/5 border-2 border-white/5 rounded-2xl px-6 py-4 font-bold opacity-40 cursor-not-allowed"
+              />
+              <p className="mt-2 text-[10px] font-bold opacity-40 italic ml-1">* L'email ne peut pas être modifié pour le moment.</p>
+            </div>
+
+            <div className="pt-4">
+              <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-red-400">Zone de danger</h4>
+                  <p className="text-[10px] font-bold opacity-50">Suppression définitive du compte</p>
+                </div>
+                <button className="px-4 py-2 rounded-xl border border-red-500/20 text-red-400 text-[10px] font-black hover:bg-red-500 hover:text-white transition-all">
+                  SUPPRIMER
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Notifications */}
+        <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} shadow-xl`}>
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 rounded-xl bg-white/5 text-[var(--primary)]">
+              <Bell size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight">Notifications</h3>
+              <p className="text-xs font-bold opacity-50 uppercase tracking-wider">Alertes et rappels</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+              <div className="flex items-center gap-4">
+                <div className={`p-2 rounded-lg ${userData.notificationsEnabled ? 'bg-green-500/20 text-green-500' : 'bg-white/5 opacity-40'}`}>
+                  <BellRing size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black">Notifications Navigateur</h4>
+                  <p className="text-[10px] font-bold opacity-50">Activer les alertes système</p>
+                </div>
+              </div>
+              <button 
+                onClick={toggleNotification}
+                className={`w-12 h-6 rounded-full transition-all relative ${userData.notificationsEnabled ? 'bg-green-500' : 'bg-white/10'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${userData.notificationsEnabled ? 'left-7' : 'left-1'}`} />
+              </button>
+            </div>
+
+            {userData.notificationsEnabled && (
+              <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-1 gap-3">
+                  {[
+                    { key: 'taskReminders', label: 'Rappels de tâches', desc: 'Alertes quand une tâche approche de son échéance' },
+                    { key: 'pomodoroAlerts', label: 'Alertes Pomodoro', desc: 'Notifications à la fin de chaque session de focus' },
+                    { key: 'smartPlanningUpdates', label: 'Mises à jour Planning', desc: 'Notifications quand ton planning IA est recalculé' }
+                  ].map((pref) => (
+                    <div key={pref.key} className="flex items-center justify-between p-4 rounded-xl bg-white/5">
+                      <div>
+                        <h5 className="text-xs font-black">{pref.label}</h5>
+                        <p className="text-[9px] font-bold opacity-40">{pref.desc}</p>
+                      </div>
+                      <button 
+                        onClick={() => updateNotificationPref(pref.key as keyof NotificationSettings, !((userData.notificationSettings as any)?.[pref.key]))}
+                        className={`w-10 h-5 rounded-full transition-all relative ${(userData.notificationSettings as any)?.[pref.key] !== false ? 'bg-[var(--primary)]' : 'bg-white/10'}`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${(userData.notificationSettings as any)?.[pref.key] !== false ? 'left-5.5' : 'left-0.5'}`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button 
+                  onClick={handleTestNotification}
+                  className="w-full py-4 rounded-xl border-2 border-dashed border-white/10 text-[10px] font-black opacity-60 hover:opacity-100 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all flex items-center justify-center gap-2"
+                >
+                  <Bell size={14} />
+                  ENVOYER UNE NOTIFICATION DE TEST
+                </button>
+              </div>
+            )}
+
+            {!userData.notificationsEnabled && (
+              <div className="p-4 rounded-2xl bg-yellow-500/5 border border-yellow-500/10">
+                <p className="text-[10px] font-bold text-yellow-500/80 leading-relaxed">
+                  Les notifications sont désactivées. Active-les pour ne plus rien rater de tes objectifs !
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -29,6 +29,13 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
+  notificationsEnabled?: boolean;
+}
+
+export interface NotificationSettings {
+  taskReminders: boolean;
+  pomodoroAlerts: boolean;
+  smartPlanningUpdates: boolean;
 }
 
 export interface Unavailability {
@@ -68,10 +75,18 @@ export type ThemeType =
   | 'rose' 
   | 'neon';
 
+export type DisplayMode = 'computer' | 'phone';
+
 export interface UserData {
+  name: string;
+  email: string;
   tasks: Task[];
   unavailabilities: Unavailability[];
   theme: ThemeType;
+  notificationsEnabled: boolean;
+  notificationSettings: NotificationSettings;
+  displayMode?: DisplayMode;
+  language?: string;
 }
 
 export interface AppState {

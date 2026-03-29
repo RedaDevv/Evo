@@ -15,6 +15,7 @@ import { auth } from './firebase';
 import { Task, TaskStatus, ThemeType, Unavailability, User, UserData } from './types';
 import { THEMES } from './constants';
 import { firebaseService } from './services/firebaseService';
+import { notificationService } from './services/notificationService';
 import { useLocalStorageState } from './hooks/useLocalStorageState';
 import Dashboard from './components/Dashboard';
 import TodoList from './components/Tasks/TodoList';
@@ -25,11 +26,14 @@ import SmartPlanning from './components/Planning/SmartPlanning';
 import TaskModal from './components/Tasks/TaskModal';
 import AuthScreen from './components/Auth/AuthScreen';
 import Settings from './components/Settings';
+import ModeSelection from './components/ModeSelection';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Mail, RefreshCw, LogOut as LogOutIcon, Settings as SettingsIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<Partial<UserData>>({});
+  const [isUserDataLoading, setIsUserDataLoading] = useState(true);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isReloading, setIsReloading] = useState(false);
@@ -42,15 +46,43 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [unavailabilities, setUnavailabilities] = useState<Unavailability[]>([]);
   
+  const [notifiedTasks, setNotifiedTasks] = useState<Set<string>>(new Set());
+
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
+  // Task reminders
+  useEffect(() => {
+    if (!userData.notificationsEnabled || userData.notificationSettings?.taskReminders === false) return;
+
+    const checkTasks = () => {
+      const now = Date.now();
+      const fifteenMinutesFromNow = now + 15 * 60 * 1000;
+
+      tasks.forEach(task => {
+        if (task.status !== TaskStatus.DONE && task.dueDate && !notifiedTasks.has(task.id)) {
+          const dueTime = new Date(task.dueDate).getTime();
+          if (dueTime > now && dueTime <= fifteenMinutesFromNow) {
+            notificationService.sendNotification(`Rappel : ${task.title}`, {
+              body: `Cette tâche arrive à échéance dans moins de 15 minutes !`,
+              tag: `task-reminder-${task.id}`
+            });
+            setNotifiedTasks(prev => new Set(prev).add(task.id));
+          }
+        }
+      });
+    };
+
+    const interval = setInterval(checkTasks, 60000); // Check every minute
+    checkTasks(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [tasks, userData.notificationsEnabled, userData.notificationSettings?.taskReminders, notifiedTasks]);
+
   // Auth state listener
   useEffect(() => {
-    console.log("App: Initializing auth state listener");
     firebaseService.testConnection();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("App: Auth state changed", user ? `User logged in: ${user.email}` : "No user");
       if (user) {
         setCurrentUser({
           id: user.uid,
@@ -101,7 +133,9 @@ const App: React.FC = () => {
     const unsubTasks = firebaseService.subscribeToTasks(currentUser.id, setTasks);
     const unsubUnavail = firebaseService.subscribeToUnavailabilities(currentUser.id, setUnavailabilities);
     const unsubUser = firebaseService.subscribeToUserData(currentUser.id, (data) => {
+      setUserData(data);
       if (data.theme) setTheme(data.theme);
+      setIsUserDataLoading(false);
     });
 
     return () => {
@@ -113,31 +147,22 @@ const App: React.FC = () => {
 
   // Apply theme to body and CSS variables
   useEffect(() => {
-    console.log("App: Applying theme", theme);
-    const themeData = THEMES[theme] || THEMES['midnight'];
+    const themeData = THEMES[theme];
     const root = document.documentElement;
     
-    if (!themeData) {
-      console.warn("App: Theme data not found for", theme);
-      return;
-    }
-
     // Apply CSS variables for instant updates
-    try {
-      Object.entries(themeData.colors).forEach(([key, value]) => {
-        root.style.setProperty(`--${key}`, value);
-      });
-      
-      document.body.style.backgroundColor = themeData.colors.bg;
-      document.body.classList.add('dark');
-    } catch (err) {
-      console.error("App: Error applying theme colors", err);
-    }
+    Object.entries(themeData.colors).forEach(([key, value]) => {
+      root.style.setProperty(`--${key}`, value);
+    });
+    
+    document.body.style.backgroundColor = themeData.colors.bg;
+    
+    // Always add dark class since all our themes are dark-based now
+    document.body.classList.add('dark');
   }, [theme]);
 
-  const handleLogin = (user: User, emailVerified: boolean) => {
+  const handleLogin = (user: User) => {
     setCurrentUser(user);
-    setIsEmailVerified(emailVerified);
   };
 
   const handleLogout = async () => {
@@ -191,11 +216,22 @@ const App: React.FC = () => {
     }
   };
 
-  const currentTheme = THEMES[theme] || THEMES['midnight'];
+  const handleModeSelect = async (mode: 'computer' | 'phone') => {
+    if (currentUser) {
+      // Mise à jour optimiste pour une transition instantanée
+      setUserData(prev => ({ ...prev, displayMode: mode }));
+      try {
+        await firebaseService.updateDisplayMode(currentUser.id, mode);
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour du mode d'affichage:", error);
+      }
+    }
+  };
 
-  console.log("App: Rendering", { isAuthLoading, hasUser: !!currentUser, isEmailVerified });
+  const currentTheme = THEMES[theme];
+  const isPhoneMode = userData.displayMode === 'phone';
 
-  if (isAuthLoading) {
+  if (isAuthLoading || (currentUser && isUserDataLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
         <div className="text-center">
@@ -257,6 +293,14 @@ const App: React.FC = () => {
     );
   }
 
+  if (currentUser && isEmailVerified && !userData.displayMode) {
+    return (
+      <div className={`${currentTheme.bg} ${currentTheme.text} min-h-screen`}>
+        <ModeSelection onSelect={handleModeSelect} />
+      </div>
+    );
+  }
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -269,6 +313,8 @@ const App: React.FC = () => {
             onUpdateTask={updateTask}
             onAddUnavailability={addUnavailability}
             onDeleteUnavailability={deleteUnavailability}
+            userData={userData}
+            onGoToSettings={() => setActiveTab('settings')}
           />
         );
       case 'tasks':
@@ -278,13 +324,33 @@ const App: React.FC = () => {
       case 'planning':
         return <SmartPlanning tasks={tasks} unavailabilities={unavailabilities} theme={theme} />;
       case 'focus':
-        return <Pomodoro theme={theme} tasks={tasks} onUpdateTask={updateTask} />;
+        return <Pomodoro theme={theme} tasks={tasks} onUpdateTask={updateTask} userData={userData} />;
       case 'stats':
         return <ProgressTracking tasks={tasks} theme={theme} />;
       case 'settings':
-        return <Settings theme={theme} onThemeChange={handleThemeChange} />;
+        return (
+          <Settings 
+            theme={theme} 
+            onThemeChange={handleThemeChange} 
+            userData={userData}
+            onUpdateUserData={(updates) => currentUser && firebaseService.updateUserData(currentUser.id, updates)}
+            onUpdateProfileName={(name) => firebaseService.updateProfileName(name)}
+          />
+        );
       default:
-        return <Dashboard tasks={tasks} theme={theme} unavailabilities={unavailabilities} onAddTask={() => setIsTaskModalOpen(true)} onUpdateTask={updateTask} onAddUnavailability={addUnavailability} onDeleteUnavailability={deleteUnavailability} />;
+        return (
+          <Dashboard 
+            tasks={tasks} 
+            theme={theme} 
+            unavailabilities={unavailabilities} 
+            onAddTask={() => setIsTaskModalOpen(true)} 
+            onUpdateTask={updateTask} 
+            onAddUnavailability={addUnavailability} 
+            onDeleteUnavailability={deleteUnavailability} 
+            userData={userData}
+            onGoToSettings={() => setActiveTab('settings')}
+          />
+        );
     }
   };
 
@@ -299,8 +365,9 @@ const App: React.FC = () => {
   ];
 
   return (
-    <div className={`min-h-screen flex flex-col md:flex-row ${currentTheme.bg} ${currentTheme.text} transition-all duration-500`}>
-      <aside className={`hidden md:flex flex-col w-64 ${currentTheme.card} border-r ${currentTheme.accent} h-screen sticky top-0 transition-all duration-500 shadow-2xl shadow-black/5`}>
+    <ErrorBoundary>
+      <div className={`min-h-screen flex flex-col ${!isPhoneMode ? 'md:flex-row' : ''} ${currentTheme.bg} ${currentTheme.text} transition-all duration-500`}>
+      <aside className={`${isPhoneMode ? 'hidden' : 'hidden md:flex'} flex-col w-64 ${currentTheme.card} border-r ${currentTheme.accent} h-screen sticky top-0 transition-all duration-500 shadow-2xl shadow-black/5`}>
         <div className="p-8 flex items-center gap-3">
           <div className={`w-12 h-12 rounded-2xl ${currentTheme.primary} flex items-center justify-center text-white shadow-xl shadow-primary/20`}>
             <BarChart3 size={28} />
@@ -311,11 +378,11 @@ const App: React.FC = () => {
         <div className="px-6 mb-4">
           <div className="bg-white/5 p-4 rounded-2xl flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full ${currentTheme.primary} flex items-center justify-center text-black font-black text-sm`}>
-              {(currentUser?.name || 'U').charAt(0).toUpperCase()}
+              {currentUser.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-black truncate">{currentUser?.name}</p>
-              <p className="text-[10px] opacity-40 font-bold truncate">{currentUser?.email}</p>
+              <p className="text-xs font-black truncate">{currentUser.name}</p>
+              <p className="text-[10px] opacity-40 font-bold truncate">{currentUser.email}</p>
             </div>
           </div>
         </div>
@@ -347,7 +414,7 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 ${currentTheme.card} border-t ${currentTheme.accent} px-2 py-3 flex justify-around shadow-2xl`}>
+      <nav className={`${isPhoneMode ? 'flex' : 'md:hidden'} fixed bottom-0 left-0 right-0 z-50 ${currentTheme.card} border-t ${currentTheme.accent} px-2 py-3 flex justify-around shadow-2xl`}>
         {navItems.map((item) => (
           <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center gap-1 p-2 ${activeTab === item.id ? currentTheme.secondary : 'opacity-40'}`}>
             <item.icon size={20} />
@@ -356,10 +423,10 @@ const App: React.FC = () => {
         ))}
       </nav>
 
-      <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 max-w-7xl mx-auto w-full transition-all duration-500">
+      <main className={`flex-1 ${isPhoneMode ? 'p-4 pb-24' : 'p-4 md:p-10 pb-24 md:pb-10'} max-w-7xl mx-auto w-full transition-all duration-500`}>
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-black tracking-tighter">Salut {currentUser?.name || 'toi'} ! 👋</h1>
+            <h1 className="text-3xl font-black tracking-tighter">Salut {currentUser.name} ! 👋</h1>
             <p className="opacity-50 text-sm font-bold uppercase tracking-wider">C'est le moment de briller.</p>
           </div>
           <button 
@@ -381,6 +448,8 @@ const App: React.FC = () => {
           />
         )}
       </main>
+      </div>
+    </ErrorBoundary>
   );
 };
 

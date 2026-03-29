@@ -123,7 +123,13 @@ export const firebaseService = {
         await setDoc(userRef, {
           email: user.email || '',
           name: user.displayName || 'Utilisateur',
-          theme: 'midnight'
+          theme: 'midnight',
+          notificationsEnabled: false,
+          notificationSettings: {
+            taskReminders: true,
+            pomodoroAlerts: true,
+            smartPlanningUpdates: true
+          }
         });
       }
     } catch (error) {
@@ -136,7 +142,7 @@ export const firebaseService = {
     const userRef = doc(db, 'users', userId);
     return onSnapshot(userRef, (doc) => {
       if (doc.exists()) {
-        callback({ theme: doc.data().theme as ThemeType });
+        callback(doc.data() as Partial<UserData>);
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${userId}`);
@@ -216,6 +222,32 @@ export const firebaseService = {
       await updateDoc(userRef, { theme });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    }
+  },
+
+  async updateDisplayMode(userId: string, displayMode: 'computer' | 'phone') {
+    const userRef = doc(db, 'users', userId);
+    try {
+      await updateDoc(userRef, { displayMode });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    }
+  },
+
+  async updateUserData(userId: string, updates: Partial<UserData>) {
+    const userRef = doc(db, 'users', userId);
+    try {
+      await updateDoc(userRef, updates);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+    }
+  },
+
+  async updateProfileName(name: string) {
+    if (auth.currentUser) {
+      await updateProfile(auth.currentUser, { displayName: name });
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, { name });
     }
   },
 

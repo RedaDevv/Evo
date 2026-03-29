@@ -53,11 +53,22 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.keys().hasOnly(['email', 'name', 'theme', 'role']) &&
-             data.email is string && data.email.size() > 0 &&
-             data.name is string && data.name.size() > 0 &&
-             data.theme in ['midnight', 'cyberpunk', 'emerald', 'ocean', 'dracula', 'nord', 'volcano', 'sunset', 'forest', 'slate', 'rose', 'neon'] &&
-             (!('role' in data) || data.role in ['admin', 'user']);
+      return data.keys().hasOnly(['email', 'name', 'theme', 'role', 'notificationsEnabled', 'notificationSettings', 'language', 'displayMode', 'avatar']) &&
+             (!('email' in data) || (data.email is string && data.email.size() > 0)) &&
+             (!('name' in data) || (data.name is string && data.name.size() > 0)) &&
+             (!('theme' in data) || data.theme is string) &&
+             (!('role' in data) || data.role in ['admin', 'user']) &&
+             (!('notificationsEnabled' in data) || data.notificationsEnabled is bool) &&
+             (!('notificationSettings' in data) || (
+               data.notificationSettings is map &&
+               data.notificationSettings.keys().hasOnly(['taskReminders', 'pomodoroAlerts', 'smartPlanningUpdates']) &&
+               (!('taskReminders' in data.notificationSettings) || data.notificationSettings.taskReminders is bool) &&
+               (!('pomodoroAlerts' in data.notificationSettings) || data.notificationSettings.pomodoroAlerts is bool) &&
+               (!('smartPlanningUpdates' in data.notificationSettings) || data.notificationSettings.smartPlanningUpdates is bool)
+             )) &&
+             (!('language' in data) || data.language is string) &&
+             (!('displayMode' in data) || data.displayMode in ['computer', 'phone']) &&
+             (!('avatar' in data) || data.avatar is string);
     }
 
     function isValidTask(data) {

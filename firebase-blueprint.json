@@ -7,9 +7,20 @@
       "properties": {
         "email": { "type": "string" },
         "name": { "type": "string" },
-        "theme": { "type": "string", "enum": ["lime", "blue", "purple", "dark"] }
+        "theme": { "type": "string" },
+        "notificationsEnabled": { "type": "boolean" },
+        "notificationSettings": {
+          "type": "object",
+          "properties": {
+            "taskReminders": { "type": "boolean" },
+            "pomodoroAlerts": { "type": "boolean" },
+            "smartPlanningUpdates": { "type": "boolean" }
+          }
+        },
+        "language": { "type": "string" },
+        "displayMode": { "type": "string", "enum": ["computer", "phone"] }
       },
-      "required": ["email", "name", "theme"]
+      "required": ["email", "name", "theme", "notificationsEnabled", "notificationSettings"]
     },
     "Task": {
       "title": "Task",
