@@ -53,12 +53,7 @@ interface FirestoreErrorInfo {
   }
 }
 
-function handleFirestoreError(
-  error: unknown, 
-  operationType: OperationType, 
-  path: string | null,
-  options: { throwError?: boolean; notifyUser?: boolean } = {}
-): FirestoreErrorInfo {
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -76,62 +71,17 @@ function handleFirestoreError(
     },
     operationType,
     path
-  };
-
-  // Log error for debugging
-  console.error(`Firebase ${operationType} Error (${path}):`, errInfo);
-
-  // Throw if explicitly requested (for critical operations)
-  if (options.throwError === true) {
-    throw new Error(errInfo.error);
   }
-
-  // Return error info for caller to handle
-  return errInfo;
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
 }
 
 export const firebaseService = {
   // Auth
   async loginWithGoogle() {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await this.ensureUserProfile(result.user);
-      return result.user;
-    } catch (error: any) {
-      // Handle unauthorized-domain error with helpful message
-      if (error.code === 'auth/unauthorized-domain') {
-        const isDev = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1';
-        
-        if (isDev) {
-          const errorMsg = `
-Firebase: Unauthorized Domain Error on localhost.
-
-SOLUTION - Choose ONE:
-
-1. QUICK FIX (Recommended):
-   - Go to: https://console.firebase.google.com
-   - Select project: gen-lang-client-0462726835
-   - Auth → Settings → Authorized domains
-   - Click "Add domain" → type: localhost
-   - Click "Add domain" → type: 127.0.0.1
-   - Refresh browser (Cmd+Shift+R on Mac)
-
-2. Alternative - Use Email/Password login instead
-
-3. Production - Authorize your deployment domain
-
-Current Domain: ${window.location.hostname}:${window.location.port}
-          `.trim();
-          
-          console.error(errorMsg);
-          throw new Error(errorMsg);
-        }
-      }
-      
-      // Re-throw other errors
-      throw error;
-    }
+    const result = await signInWithPopup(auth, googleProvider);
+    await this.ensureUserProfile(result.user);
+    return result.user;
   },
 
   async signup(email: string, name: string, pass: string) {
@@ -193,32 +143,9 @@ Current Domain: ${window.location.hostname}:${window.location.port}
     return onSnapshot(userRef, (doc) => {
       if (doc.exists()) {
         callback(doc.data() as Partial<UserData>);
-      } else {
-        // User doc doesn't exist yet - return default/empty data
-        callback({
-          theme: 'midnight',
-          notificationsEnabled: false,
-          notificationSettings: {
-            taskReminders: true,
-            pomodoroAlerts: true,
-            smartPlanningUpdates: true
-          }
-        });
       }
     }, (error) => {
-      // Log error but don't throw - allow app to continue
       handleFirestoreError(error, OperationType.GET, `users/${userId}`);
-      // Call callback with defaults so app doesn't hang
-      callback({
-        theme: 'midnight',
-        notificationsEnabled: false,
-        notificationSettings: {
-          taskReminders: true,
-          pomodoroAlerts: true,
-          smartPlanningUpdates: true
-        }
-      });
-      console.warn('Failed to sync user data, using defaults...');
     });
   },
 
@@ -229,11 +156,7 @@ Current Domain: ${window.location.hostname}:${window.location.port}
       const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
       callback(tasks);
     }, (error) => {
-      // Log error but don't throw - allow app to continue
       handleFirestoreError(error, OperationType.LIST, `users/${userId}/tasks`);
-      // Call callback with empty array so app doesn't hang
-      callback([]);
-      console.warn('Failed to sync tasks, using empty list...');
     });
   },
 
@@ -243,11 +166,7 @@ Current Domain: ${window.location.hostname}:${window.location.port}
       const unavailabilities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Unavailability));
       callback(unavailabilities);
     }, (error) => {
-      // Log error but don't throw - allow app to continue
       handleFirestoreError(error, OperationType.LIST, `users/${userId}/unavailabilities`);
-      // Call callback with empty array so app doesn't hang
-      callback([]);
-      console.warn('Failed to sync unavailabilities, using empty list...');
     });
   },
 
@@ -325,43 +244,20 @@ Current Domain: ${window.location.hostname}:${window.location.port}
   },
 
   async updateProfileName(name: string) {
-    if (!auth.currentUser) {
-      console.warn('No user logged in');
-      return;
-    }
-
-    try {
+    if (auth.currentUser) {
       await updateProfile(auth.currentUser, { displayName: name });
       const userRef = doc(db, 'users', auth.currentUser.uid);
       await updateDoc(userRef, { name });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
-      throw new Error('Failed to update profile name');
     }
   },
 
   async testConnection() {
     try {
       await getDocFromServer(doc(db, 'test', 'connection'));
-      console.log('✅ Firebase connection successful');
-      return true;
     } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('offline')) {
-          console.warn('⚠️ Firebase: Client is offline - using cached data');
-          return false;
-        } else if (error.message.includes('permission')) {
-          console.error('❌ Firebase: Permission denied - check Firestore rules');
-          return false;
-        } else if (error.message.includes('database not found')) {
-          console.error('❌ Firebase: Database not found - check configuration');
-          return false;
-        } else {
-          console.error('❌ Firebase connection test failed:', error.message);
-          return false;
-        }
+      if(error instanceof Error && error.message.includes('the client is offline')) {
+        console.error("Please check your Firebase configuration. ");
       }
-      return false;
     }
   }
 };
