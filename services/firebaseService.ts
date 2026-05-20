@@ -7,7 +7,8 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   reload,
-  User as FirebaseUser
+  User as FirebaseUser,
+  GoogleAuthProvider
 } from 'firebase/auth';
 import { 
   doc, 
@@ -24,6 +25,8 @@ import {
 } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
 import { Task, Unavailability, User, UserData, ThemeType } from '../types';
+
+let googleAccessToken: string | null = null;
 
 enum OperationType {
   CREATE = 'create',
@@ -80,8 +83,26 @@ export const firebaseService = {
   // Auth
   async loginWithGoogle() {
     const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      googleAccessToken = credential.accessToken;
+    }
     await this.ensureUserProfile(result.user);
     return result.user;
+  },
+
+  async getGoogleAccessToken() {
+    return googleAccessToken;
+  },
+
+  async requestGoogleAccessToken() {
+    const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      googleAccessToken = credential.accessToken;
+      return googleAccessToken;
+    }
+    throw new Error('Impossible de récupérer le jeton d\'accès Google.');
   },
 
   async signup(email: string, name: string, pass: string) {
@@ -113,6 +134,7 @@ export const firebaseService = {
 
   async logout() {
     await signOut(auth);
+    googleAccessToken = null;
   },
 
   async ensureUserProfile(user: FirebaseUser) {

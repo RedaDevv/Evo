@@ -1,9 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task, ThemeType, TaskStatus, Unavailability } from '../../types';
 import { THEMES } from '../../constants';
 import { GoogleGenAI } from '@google/genai';
-import { Sparkles, CalendarDays, BrainCircuit, Loader2, Info, Lock } from 'lucide-react';
+import { 
+  Sparkles, 
+  CalendarDays, 
+  BrainCircuit, 
+  Loader2, 
+  Info, 
+  Lock, 
+  Calendar, 
+  Check, 
+  AlertCircle,
+  Link,
+  CalendarCheck,
+  ArrowRight
+} from 'lucide-react';
+import { firebaseService } from '../../services/firebaseService';
+import { googleCalendarService, GoogleCalendarEvent } from '../../services/googleCalendarService';
 
 interface SmartPlanningProps {
   tasks: Task[];
@@ -17,12 +32,125 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
   const [isLoading, setIsLoading] = useState(false);
   const [justification, setJustification] = useState('');
 
+  // Google Calendar integration states
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [gcalEvents, setGcalEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [gcalUnavailabilities, setGcalUnavailabilities] = useState<Unavailability[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  // Load access token and fetch current week's events on mount if previously connected
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        const token = await firebaseService.getGoogleAccessToken();
+        if (token) {
+          setAccessToken(token);
+          fetchGoogleEvents(token);
+        }
+      } catch (err) {
+        console.error("Error loading Google Access Token:", err);
+      }
+    };
+    checkToken();
+  }, []);
+
+  // Get current week Monday to Sunday date range
+  const getWeekRange = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    // Monday is index 1. If Sunday, go back 6 days.
+    const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + distanceToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    return {
+      timeMin: monday.toISOString(),
+      timeMax: sunday.toISOString(),
+      mondayDate: monday
+    };
+  };
+
+  // Maps true calendar dates back to simplified French weekly day names
+  const mapGoogleEventsToUnavailabilities = (events: GoogleCalendarEvent[]): Unavailability[] => {
+    const daysMapping: { [key: number]: string } = {
+      1: 'Lundi',
+      2: 'Mardi',
+      3: 'Mercredi',
+      4: 'Jeudi',
+      5: 'Vendredi',
+      6: 'Samedi',
+      0: 'Dimanche'
+    };
+
+    return events.map((event, index) => {
+      const startStr = event.start.dateTime || event.start.dateTime || '';
+      if (!startStr) return null;
+      
+      const start = new Date(startStr);
+      const end = event.end.dateTime ? new Date(event.end.dateTime) : new Date(start.getTime() + 60 * 60 * 1000);
+      const dayName = daysMapping[start.getDay()];
+      
+      const formatTime = (date: Date) => {
+        const h = String(date.getHours()).padStart(2, '0');
+        const m = String(date.getMinutes()).padStart(2, '0');
+        return `${h}:${m}`;
+      };
+
+      return {
+        id: `gcal-${event.id || index}`,
+        day: dayName || 'Lundi',
+        startTime: formatTime(start),
+        endTime: formatTime(end),
+        reason: `${event.summary || 'Occupation'}`
+      };
+    }).filter(item => item !== null) as Unavailability[];
+  };
+
+  const fetchGoogleEvents = async (token: string) => {
+    try {
+      const { timeMin, timeMax } = getWeekRange();
+      const events = await googleCalendarService.listEvents(token, timeMin, timeMax);
+      setGcalEvents(events);
+      const calendarUnavailabilities = mapGoogleEventsToUnavailabilities(events);
+      setGcalUnavailabilities(calendarUnavailabilities);
+    } catch (err) {
+      console.error("Error listing calendar events:", err);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    setIsConnecting(true);
+    setExportError('');
+    try {
+      const token = await firebaseService.requestGoogleAccessToken();
+      if (token) {
+        setAccessToken(token);
+        await fetchGoogleEvents(token);
+      }
+    } catch (err: any) {
+      console.error("Failed to connect Google Calendar:", err);
+      setExportError("Impossible de lier Google Calendar. Réessaye.");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   const generatePlanning = async () => {
     setIsLoading(true);
     try {
-      // Use the injected API_KEY from process.env for the GoogleGenAI instance
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const activeTasks = tasks.filter(t => t.status !== TaskStatus.DONE);
+      
+      // Merge local unavailability constraints with dynamic Google Calendar events for full conflicts analysis
+      const allUnavailabilities = [...unavailabilities, ...gcalUnavailabilities];
       
       const prompt = `Agis comme un expert en productivité EdTech. Voici mes données :
       
@@ -35,40 +163,46 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
         duree_estimee: t.estimatedMinutes 
       })))}
       
-      INDISPONIBILITÉS (Créneaux où l'utilisateur n'est PAS disponible) :
-      ${JSON.stringify(unavailabilities.map(u => ({
+      INDISPONIBILITÉS (Fusion des contraintes de l'agenda Google Calendar et des contraintes locales) :
+      ${JSON.stringify(allUnavailabilities.map(u => ({
         jour: u.day,
         debut: u.startTime,
         fin: u.endTime,
         raison: u.reason
       })))}
       
-      Génère un planning hebdomadaire optimisé au format JSON. 
+      Génère un planning hebdomadaire d'études optimisé au format JSON. 
       Règles CRITIQUES : 
-      1. NE PLANIFIE AUCUNE TÂCHE pendant les créneaux d'indisponibilité listés.
-      2. Alterne les tâches difficiles avec les tâches faciles.
-      3. Priorise les tâches 'DO_FIRST'.
-      4. Les créneaux horaires doivent être précis (ex: "14:30 - 15:30") et tenir compte de la durée estimée.
+      1. NE PLANIFIE AUCUNE TÂCHE pendant les créneaux d'indisponibilité listés (particulièrement ceux marqués "Google Calendar:").
+      2. Alterne les tâches difficiles avec les tâches faciles pour éviter l'épuisement cognitif.
+      3. Planifie en "Deep Work blocs" de 50 à 90 minutes.
+      4. Priorise rigoureusement les tâches 'DO_FIRST' et 'SCHEDULE'.
+      5. Les créneaux horaires doivent être précis (ex: "14:30 - 15:30") et tenir compte de la durée estimée.
       
       Format attendu :
       {
         "justification": "Ma stratégie pour cette semaine : ...",
         "days": [
-          { "day": "Lundi", "slots": [{ "time": "14:30 - 15:30", "task": "...", "reason": "Placé ici car..." }] }
+          { 
+            "day": "Lundi", 
+            "slots": [
+              { "time": "14:30 - 15:30", "task": "Nom de la Tâche", "reason": "Raison stratégique du placement" }
+            ] 
+          }
         ]
       }`;
 
-      // Call generateContent with the model name and contents as specified in the guidelines
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
 
-      // Directly access the text property of GenerateContentResponse
       const result = JSON.parse(response.text || '{}');
       setPlanning(result.days || []);
       setJustification(result.justification || '');
+      setExportSuccess(false);
+      setExportError('');
     } catch (error) {
       console.error("AI Error:", error);
       alert("Erreur lors de la génération du planning. Vérifie ta connexion.");
@@ -77,8 +211,131 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
     }
   };
 
+  // Exports generated study blocks to Google Calendar
+  const handleExportToGoogleCalendar = async () => {
+    if (!accessToken) {
+      // Prompt OAuth link connection
+      await handleConnectCalendar();
+      return;
+    }
+
+    const confirmExport = window.confirm(
+      `Es-tu sûr de vouloir exporter ce planning d'études vers ton agenda Google ? Des créneaux de Deep Work y seront ajoutés.`
+    );
+    if (!confirmExport) return;
+
+    setIsExporting(true);
+    setExportError('');
+    setExportSuccess(false);
+
+    try {
+      const { mondayDate } = getWeekRange();
+      const dayOffsetMapping: { [key: string]: number } = {
+        'Lundi': 0,
+        'Mardi': 1,
+        'Mercredi': 2,
+        'Jeudi': 3,
+        'Vendredi': 4,
+        'Samedi': 5,
+        'Dimanche': 6
+      };
+
+      for (const dayData of planning) {
+        const offset = dayOffsetMapping[dayData.day];
+        if (offset === undefined) continue;
+
+        // Base date for this day
+        const dayDate = new Date(mondayDate);
+        dayDate.setDate(mondayDate.getDate() + offset);
+
+        for (const slot of dayData.slots) {
+          const times = slot.time.split(' - ');
+          if (times.length !== 2) continue;
+
+          const [timeStart, timeEnd] = times;
+          const [startH, startM] = timeStart.split(':').map(Number);
+          const [endH, endM] = timeEnd.split(':').map(Number);
+
+          const startEvent = new Date(dayDate);
+          startEvent.setHours(startH, startM, 0, 0);
+
+          const endEvent = new Date(dayDate);
+          endEvent.setHours(endH, endM, 0, 0);
+
+          const eventBody = {
+            summary: `📚 Révison : ${slot.task} - Evo V2`,
+            description: `Session d'étude planifiée intelligemment par l'assistant Evo V2.\n\n🎯 Objectif : ${slot.task}\n💡 Raisonnement d'optimisation : ${slot.reason || ''}\n\nReçois des notifications de rappel pour démarrer ton focus à l'heure !`,
+            start: {
+              dateTime: startEvent.toISOString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            },
+            end: {
+              dateTime: endEvent.toISOString(),
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            },
+            reminders: {
+              useDefault: true
+            }
+          };
+
+          await googleCalendarService.createEvent(accessToken, eventBody);
+        }
+      }
+
+      setExportSuccess(true);
+    } catch (err: any) {
+      console.error("Error exporting events to Google Calendar:", err);
+      setExportError("Erreur lors de l'envoi vers Google Calendar. Vérifie tes permissions.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+      {/* Google Calendar Connection Status Bar */}
+      <div className={`${currentTheme.card} p-5 rounded-3xl border ${currentTheme.accent} shadow-md flex flex-col sm:flex-row items-center justify-between gap-4`}>
+        <div className="flex items-center gap-3">
+          <div className={`p-3 rounded-2xl ${accessToken ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
+            <Calendar size={20} />
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-[var(--text)]">Google Calendar Sync</h4>
+            <p className="text-xs opacity-50 font-bold">
+              {accessToken 
+                ? `Connecté avec succès. ${gcalUnavailabilities.length} contraintes de conflits récupérées de ton agenda précieux.`
+                : "Synchronise tes révisions et évite les double-bookings en connectant ton compte Google."
+              }
+            </p>
+          </div>
+        </div>
+        <div>
+          {accessToken ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-green-500/10 text-green-500 border border-green-500/20">
+                <Check size={12} strokeWidth={3} /> ACTIF
+              </span>
+              <button 
+                onClick={handleConnectCalendar}
+                disabled={isConnecting}
+                className="text-xs font-black opacity-50 hover:opacity-100 transition-all uppercase tracking-widest px-3 py-2"
+              >
+                Reconnecter
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnectCalendar}
+              disabled={isConnecting}
+              className={`px-5 py-3 rounded-xl font-black text-xs flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 text-white`}
+            >
+              {isConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link size={14} />}
+              LINK GOOGLE CALENDAR
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className={`${currentTheme.card} p-8 rounded-[2rem] border ${currentTheme.accent} shadow-xl relative overflow-hidden`}>
         <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
           <BrainCircuit size={160} className={currentTheme.secondary} />
@@ -89,7 +346,10 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
             <Sparkles className="text-[var(--primary)]" /> Planning Sur-Mesure
           </h2>
           <p className="text-[var(--text)]/60 max-w-2xl mb-8">
-            L'IA prend désormais en compte tes <span className="font-bold text-[var(--text)]">{unavailabilities.length} créneaux bloqués</span> pour te proposer un emploi du temps 100% réaliste.
+            L'IA prend désormais en compte tes <span className="font-bold text-[var(--text)]">{unavailabilities.length} indisponibilités directes</span> 
+            {gcalUnavailabilities.length > 0 && (
+              <span> et tes <span className="font-bold text-blue-500">{gcalUnavailabilities.length} événements Google Calendar</span></span>
+            )} pour te proposer un emploi du temps 100% réaliste d'études.
           </p>
           
           <button 
@@ -98,15 +358,47 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
             className={`${currentTheme.primary} text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-lg hover:opacity-90 transition-all disabled:opacity-50 active:scale-95`}
           >
             {isLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {isLoading ? 'Calcul du meilleur créneau...' : 'Générer mon planning intelligent'}
+            {isLoading ? 'Calcul stratégique des plages...' : 'Générer mon planning intelligent'}
           </button>
         </div>
       </div>
+
+      {exportError && (
+        <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 flex items-center gap-3">
+          <AlertCircle className="text-red-500" />
+          <p className="text-sm font-bold text-red-500">{exportError}</p>
+        </div>
+      )}
+
+      {exportSuccess && (
+        <div className="bg-green-500/10 p-4 rounded-2xl border border-green-500/20 flex items-center gap-3 animate-in fade-in zoom-in duration-300">
+          <CalendarCheck className="text-green-500" />
+          <p className="text-sm font-black text-green-500">Planning exporté avec succès ! Reçois tes alertes sur ton mobile ou ordinateur. 🎉</p>
+        </div>
+      )}
 
       {justification && (
         <div className="bg-[var(--primary)]/10 p-4 rounded-2xl border border-[var(--primary)]/20 flex items-start gap-3">
           <Info className="text-[var(--primary)] mt-1 flex-shrink-0" />
           <p className="text-sm text-[var(--text)] italic">{justification}</p>
+        </div>
+      )}
+
+      {/* Synchronize actions panel */}
+      {planning.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-4 p-6 bg-white/5 border border-white/10 rounded-3xl">
+          <div>
+            <h3 className="text-base font-black">Prêt à réviser ?</h3>
+            <p className="text-xs opacity-50">Réserve ces créneaux d'études directement dans ton calendrier.</p>
+          </div>
+          <button
+            onClick={handleExportToGoogleCalendar}
+            disabled={isExporting}
+            className={`px-6 py-4 rounded-2xl font-black text-sm flex items-center gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all bg-[var(--primary)] text-black`}
+          >
+            {isExporting ? <Loader2 className="animate-spin" /> : <Calendar size={18} />}
+            {isExporting ? 'Exportation en cours...' : 'EXPORTER TOUT VERS GOOGLE CALENDAR'}
+          </button>
         </div>
       )}
 
@@ -119,8 +411,8 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
                   <CalendarDays size={20} className={currentTheme.secondary} />
                   {dayData.day}
                 </h3>
-                {/* Fixed: Moved 'title' from Lock icon to a wrapping span to fix TypeScript error */}
-                {unavailabilities.some(u => u.day === dayData.day) && (
+                {((unavailabilities.some(u => u.day === dayData.day)) || 
+                  (gcalUnavailabilities.some(u => u.day === dayData.day))) && (
                   <span title="Contraintes détectées">
                     <Lock size={14} className="opacity-30" />
                   </span>
@@ -131,7 +423,7 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
                   <div key={sIdx} className="relative pl-4 border-l-2 border-white/10 py-1">
                     <div className="absolute left-[-5px] top-2 w-2 h-2 rounded-full bg-[var(--primary)]" />
                     <span className="text-[10px] font-bold text-[var(--text)]/50 uppercase tracking-widest">{slot.time}</span>
-                    <p className="font-bold text-sm leading-tight">{slot.task}</p>
+                    <p className="font-bold text-sm leading-tight text-[var(--text)]">{slot.task}</p>
                     <p className="text-[10px] text-[var(--text)]/40 mt-1 italic leading-tight">{slot.reason}</p>
                   </div>
                 ))}
@@ -142,7 +434,7 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
           <div className="col-span-full py-20 text-center text-[var(--text)]/40">
             {tasks.filter(t => t.status !== TaskStatus.DONE).length === 0 
               ? "Ajoute des tâches pour voir l'IA à l'œuvre ! 📝"
-              : "Clique sur le bouton pour que l'IA contourne tes créneaux bloqués."}
+              : "Clique sur le bouton pour que l'IA contourne tes créneaux bloqués et Google Calendar."}
           </div>
         )}
       </div>
