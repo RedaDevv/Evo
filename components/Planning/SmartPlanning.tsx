@@ -211,6 +211,118 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
     }
   };
 
+  const generateDeterministicPlanning = () => {
+    setIsLoading(true);
+    try {
+      const activeTasks = tasks.filter(t => t.status !== TaskStatus.DONE);
+      if (activeTasks.length === 0) {
+        alert("Ajoute des tâches actives pour planifier tes révisions !");
+        setIsLoading(false);
+        return;
+      }
+
+      // Merge local unavailability constraints with dynamic Google Calendar events for full conflicts analysis
+      const allUnavailabilities = [...unavailabilities, ...gcalUnavailabilities];
+
+      // Define potential daily slots
+      const potentialSlots = [
+        { time: "09:00 - 10:30", start: "09:00", end: "10:30" },
+        { time: "10:45 - 12:15", start: "10:45", end: "12:15" },
+        { time: "14:00 - 15:30", start: "14:00", end: "15:30" },
+        { time: "15:45 - 17:15", start: "15:45", end: "17:15" },
+        { time: "18:00 - 19:30", start: "18:00", end: "19:30" }
+      ];
+
+      // Check overlap helper with normalized time check
+      const isOverlapping = (day: string, slotStart: string, slotEnd: string) => {
+        const [sh, sm] = slotStart.split(':').map(Number);
+        const [eh, em] = slotEnd.split(':').map(Number);
+        const sMin = sh * 60 + sm;
+        const eMin = eh * 60 + em;
+
+        const dayUnavailabilities = allUnavailabilities.filter(
+          u => u.day.trim().toLowerCase() === day.trim().toLowerCase()
+        );
+
+        for (const u of dayUnavailabilities) {
+          const [ush, usm] = u.startTime.split(':').map(Number);
+          const [ueh, uem] = u.endTime.split(':').map(Number);
+          const uStartMin = ush * 60 + usm;
+          const uEndMin = ueh * 60 + uem;
+
+          // Check if there is intersection
+          if (sMin < uEndMin && uStartMin < eMin) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      // Weight tasks by priority/urgency
+      const getTaskWeight = (t: Task) => {
+        let weight = 0;
+        if (t.quadrant === 'do_first') weight += 1000;
+        else if (t.quadrant === 'schedule') weight += 500;
+        else if (t.quadrant === 'delegate') weight += 200;
+
+        if (t.priority === 'high') weight += 100;
+        else if (t.priority === 'medium') weight += 50;
+        return weight;
+      };
+
+      const sortedTasks = [...activeTasks].sort((a, b) => getTaskWeight(b) - getTaskWeight(a));
+
+      const daysOfWeek = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+      const generatedDays: any[] = [];
+      let taskIndex = 0;
+
+      for (const day of daysOfWeek) {
+        const slotsForDay: any[] = [];
+
+        for (const slot of potentialSlots) {
+          if (!isOverlapping(day, slot.start, slot.end)) {
+            const currentTask = sortedTasks[taskIndex % sortedTasks.length];
+            
+            let reason = `Priorité accordée (${currentTask.quadrant === 'do_first' ? 'Action urgente' : 'Planification'}).`;
+            if (slot.start === "09:00" || slot.start === "10:45") {
+              reason += " Placé en matinée pour exploiter au mieux ton attention maximale.";
+            } else if (slot.start === "18:00") {
+              reason += " Placé en fin de journée pour cimenter les apprentissages.";
+            } else {
+              reason += " Planification intermédiaire optimisée selon tes limites de temps.";
+            }
+
+            slotsForDay.push({
+              time: slot.time,
+              task: currentTask.title,
+              reason: reason
+            });
+
+            taskIndex++;
+          }
+        }
+
+        if (slotsForDay.length > 0) {
+          generatedDays.push({
+            day,
+            slots: slotsForDay
+          });
+        }
+      }
+
+      setPlanning(generatedDays);
+      setJustification("Ton emploi du temps a été ajusté dynamiquement de manière déterministe par l'algorithme d'Evo. Tous les créneaux d'indisponibilité physique et les évènements de ton agenda synchronisé Google Calendar ont été évités, sans utiliser de jetons d'IA.");
+      setExportSuccess(false);
+      setExportError('');
+
+    } catch (err) {
+      console.error("Error creating deterministic schedule:", err);
+      alert("Une erreur est survenue lors de la planification automatique.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Exports generated study blocks to Google Calendar
   const handleExportToGoogleCalendar = async () => {
     if (!accessToken) {
@@ -346,20 +458,31 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
             <Sparkles className="text-[var(--primary)]" /> Planning Sur-Mesure
           </h2>
           <p className="text-[var(--text)]/60 max-w-2xl mb-8">
-            L'IA prend désormais en compte tes <span className="font-bold text-[var(--text)]">{unavailabilities.length} indisponibilités directes</span> 
+            Optimise ton emploi du temps d'études. Evo prend en compte tes <span className="font-bold text-[var(--text)]">{unavailabilities.length} indisponibilités directes</span> 
             {gcalUnavailabilities.length > 0 && (
               <span> et tes <span className="font-bold text-blue-500">{gcalUnavailabilities.length} événements Google Calendar</span></span>
-            )} pour te proposer un emploi du temps 100% réaliste d'études.
+            )} pour te proposer un planning 100% réaliste d'études, avec ou sans IA !
           </p>
           
-          <button 
-            onClick={generatePlanning}
-            disabled={isLoading || tasks.filter(t => t.status !== TaskStatus.DONE).length === 0}
-            className={`${currentTheme.primary} text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-lg hover:opacity-90 transition-all disabled:opacity-50 active:scale-95`}
-          >
-            {isLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {isLoading ? 'Calcul stratégique des plages...' : 'Générer mon planning intelligent'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button 
+              onClick={generatePlanning}
+              disabled={isLoading || tasks.filter(t => t.status !== TaskStatus.DONE).length === 0}
+              className={`${currentTheme.primary} text-white px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 flex-1`}
+            >
+              {isLoading ? <Loader2 className="animate-spin w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+              GÉNÉRER AVEC L'IA (GEMINI)
+            </button>
+
+            <button 
+              onClick={generateDeterministicPlanning}
+              disabled={isLoading || tasks.filter(t => t.status !== TaskStatus.DONE).length === 0}
+              className="bg-white/5 hover:bg-white/10 text-[var(--text)] border border-white/10 px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg transition-all disabled:opacity-50 active:scale-95 flex-1"
+            >
+              <Calendar className="w-4 h-4 text-[var(--primary)]" />
+              PLANNING DYNAMIQUE (ALGORITHMIQUE, HORS-IA)
+            </button>
+          </div>
         </div>
       </div>
 
