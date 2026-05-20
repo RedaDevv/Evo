@@ -224,11 +224,11 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
       // Merge local unavailability constraints with dynamic Google Calendar events for full conflicts analysis
       const allUnavailabilities = [...unavailabilities, ...gcalUnavailabilities];
 
-      // Define potential daily slots
+      // Define potential daily slots ordered by general preference
       const potentialSlots = [
         { time: "09:00 - 10:30", start: "09:00", end: "10:30" },
-        { time: "10:45 - 12:15", start: "10:45", end: "12:15" },
         { time: "14:00 - 15:30", start: "14:00", end: "15:30" },
+        { time: "10:45 - 12:15", start: "10:45", end: "12:15" },
         { time: "15:45 - 17:15", start: "15:45", end: "17:15" },
         { time: "18:00 - 19:30", start: "18:00", end: "19:30" }
       ];
@@ -272,40 +272,120 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
 
       const sortedTasks = [...activeTasks].sort((a, b) => getTaskWeight(b) - getTaskWeight(a));
 
-      const daysOfWeek = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-      const generatedDays: any[] = [];
-      let taskIndex = 0;
-
-      for (const day of daysOfWeek) {
-        const slotsForDay: any[] = [];
-
-        for (const slot of potentialSlots) {
-          if (!isOverlapping(day, slot.start, slot.end)) {
-            const currentTask = sortedTasks[taskIndex % sortedTasks.length];
-            
-            let reason = `Priorité accordée (${currentTask.quadrant === 'do_first' ? 'Action urgente' : 'Planification'}).`;
-            if (slot.start === "09:00" || slot.start === "10:45") {
-              reason += " Placé en matinée pour exploiter au mieux ton attention maximale.";
-            } else if (slot.start === "18:00") {
-              reason += " Placé en fin de journée pour cimenter les apprentissages.";
-            } else {
-              reason += " Planification intermédiaire optimisée selon tes limites de temps.";
-            }
-
-            slotsForDay.push({
-              time: slot.time,
-              task: currentTask.title,
-              reason: reason
-            });
-
-            taskIndex++;
-          }
+      // Build a flat list of study blocks needed based on the tasks' estimated durations
+      const blocksQueue: Task[] = [];
+      for (const t of sortedTasks) {
+        const estimated = t.estimatedMinutes || 90;
+        // Each block is 90 minutes. Require at least 1 block, cap at 4 blocks per task to remain realistic
+        const blocksCount = Math.min(4, Math.max(1, Math.ceil(estimated / 90)));
+        for (let i = 0; i < blocksCount; i++) {
+          blocksQueue.push(t);
         }
+      }
 
+      const daysOfWeek = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+      const daySlots: { [day: string]: any[] } = {};
+      daysOfWeek.forEach(d => {
+        daySlots[d] = [];
+      });
+
+      // Track which task IDs are scheduled on a given day to maximize variety
+      const scheduledTasksOnDay: { [day: string]: Set<string> } = {};
+      daysOfWeek.forEach(d => {
+        scheduledTasksOnDay[d] = new Set();
+      });
+
+      // Round-robin pass over days of the week to distribute tasks evenly (up to 5 study blocks per day)
+      const maxPasses = 5;
+      for (let pass = 0; pass < maxPasses; pass++) {
+        if (blocksQueue.length === 0) break;
+
+        for (const day of daysOfWeek) {
+          if (blocksQueue.length === 0) break;
+
+          // Check if day is already fully packed
+          if (daySlots[day].length >= potentialSlots.length) continue;
+
+          // Find the first available non-overlapping slot on this day
+          let targetSlot = null;
+          for (const slot of potentialSlots) {
+            const alreadyChosen = daySlots[day].some(s => s.time === slot.time);
+            if (!alreadyChosen && !isOverlapping(day, slot.start, slot.end)) {
+              targetSlot = slot;
+              break;
+            }
+          }
+
+          if (!targetSlot) continue; // No available slot due to manual or GCal unavailability constraints
+
+          // Select a task from the remaining queue that hasn't been scheduled on this day yet
+          let taskIndexToPick = -1;
+          for (let i = 0; i < blocksQueue.length; i++) {
+            const task = blocksQueue[i];
+            if (!scheduledTasksOnDay[day].has(task.id)) {
+              taskIndexToPick = i;
+              break;
+            }
+          }
+
+          // If all tasks in queue have already been scheduled on this day, pick one that is at least
+          // different from the last scheduled block of this day
+          if (taskIndexToPick === -1) {
+            const lastSlotOnDay = daySlots[day][daySlots[day].length - 1];
+            if (lastSlotOnDay) {
+              for (let i = 0; i < blocksQueue.length; i++) {
+                if (blocksQueue[i].title !== lastSlotOnDay.task) {
+                  taskIndexToPick = i;
+                  break;
+                }
+              }
+            }
+            if (taskIndexToPick === -1) {
+              taskIndexToPick = 0; // complete fallback
+            }
+          }
+
+          const chosenTask = blocksQueue.splice(taskIndexToPick, 1)[0];
+          scheduledTasksOnDay[day].add(chosenTask.id);
+
+          let reason = `Priorité accordée (${chosenTask.quadrant === 'do_first' ? 'Action urgente' : 'Planification'}).`;
+          if (targetSlot.start === "09:00" || targetSlot.start === "10:45") {
+            reason += " Placé en matinée pour exploiter au mieux ton attention maximale.";
+          } else if (targetSlot.start === "18:00") {
+            reason += " Placé en fin de journée pour cimenter les apprentissages.";
+          } else {
+            reason += " Planification intermédiaire optimisée selon tes limites de temps.";
+          }
+
+          daySlots[day].push({
+            time: targetSlot.time,
+            task: chosenTask.title,
+            reason: reason,
+            sortKey: targetSlot.start
+          });
+        }
+      }
+
+      // Gather non-empty days and sort their scheduled slots chronologically
+      const generatedDays: any[] = [];
+      for (const day of daysOfWeek) {
+        const slotsForDay = daySlots[day];
         if (slotsForDay.length > 0) {
+          slotsForDay.sort((a, b) => {
+            const [ah, am] = a.sortKey.split(':').map(Number);
+            const [bh, bm] = b.sortKey.split(':').map(Number);
+            return (ah * 60 + am) - (bh * 60 + bm);
+          });
+
+          const cleanSlots = slotsForDay.map(s => ({
+            time: s.time,
+            task: s.task,
+            reason: s.reason
+          }));
+
           generatedDays.push({
             day,
-            slots: slotsForDay
+            slots: cleanSlots
           });
         }
       }
