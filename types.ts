@@ -77,6 +77,11 @@ export type ThemeType =
 
 export type DisplayMode = 'computer' | 'phone';
 
+export interface SuggestionPlaylist {
+  name: string;
+  url: string;
+}
+
 export interface UserData {
   name: string;
   email: string;
@@ -87,6 +92,8 @@ export interface UserData {
   notificationSettings: NotificationSettings;
   displayMode?: DisplayMode;
   language?: string;
+  customSuggestions?: SuggestionPlaylist[];
+  lastUsedPlaylist?: string;
 }
 
 export interface AppState {

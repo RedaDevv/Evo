@@ -52,6 +52,17 @@
         "reason": { "type": "string" }
       },
       "required": ["day", "startTime", "endTime", "reason"]
+    },
+    "SpotifyTokens": {
+      "title": "SpotifyTokens",
+      "description": "Spotify API tokens of the user",
+      "type": "object",
+      "properties": {
+        "access_token": { "type": "string" },
+        "refresh_token": { "type": "string" },
+        "expiresAt": { "type": "number", "description": "Timestamp when the access token expires" }
+      },
+      "required": ["access_token", "refresh_token", "expiresAt"]
     }
   },
   "firestore": {
@@ -66,6 +77,10 @@
     "/users/{userId}/unavailabilities/{unavailabilityId}": {
       "schema": "Unavailability",
       "description": "User unavailabilities"
+    },
+    "/users/{userId}/spotifyTokens/{tokenId}": {
+      "schema": "SpotifyTokens",
+      "description": "User Spotify API tokens"
     }
   }
 }

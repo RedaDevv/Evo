@@ -29,6 +29,7 @@ import Settings from './components/Settings';
 import ModeSelection from './components/ModeSelection';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Mail, RefreshCw, LogOut as LogOutIcon, Settings as SettingsIcon } from 'lucide-react';
+import { handleSpotifyCallback } from './spotify';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -122,12 +123,39 @@ const App: React.FC = () => {
     }
   };
 
-  // Real-time Firestore sync
+  // Listen for success message from Spotify OAuth popup
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Validate origin if possible, or just check the event type
+      if (event.data?.type === 'SPOTIFY_AUTH_SUCCESS') {
+        console.log("Captured SPOTIFY_AUTH_SUCCESS from popup!");
+        setActiveTab('focus');
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Real-time Firestore sync and Spotify callback capturing
   useEffect(() => {
     if (!currentUser) {
       setTasks([]);
       setUnavailabilities([]);
       return;
+    }
+
+    // Capture the Spotify OAuth redirect code
+    if (window.location.search.includes('code=')) {
+      handleSpotifyCallback(currentUser.id)
+        .then((token) => {
+          if (token) {
+            console.log("Spotify connected successfully!");
+            setActiveTab('focus');
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to authenticate with Spotify:", error);
+        });
     }
 
     const unsubTasks = firebaseService.subscribeToTasks(currentUser.id, setTasks);

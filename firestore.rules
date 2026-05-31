@@ -53,7 +53,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.keys().hasOnly(['email', 'name', 'theme', 'role', 'notificationsEnabled', 'notificationSettings', 'language', 'displayMode', 'avatar']) &&
+      return data.keys().hasOnly(['email', 'name', 'theme', 'role', 'notificationsEnabled', 'notificationSettings', 'language', 'displayMode', 'avatar', 'customSuggestions', 'lastUsedPlaylist']) &&
              (!('email' in data) || (data.email is string && data.email.size() > 0)) &&
              (!('name' in data) || (data.name is string && data.name.size() > 0)) &&
              (!('theme' in data) || data.theme is string) &&
@@ -68,7 +68,17 @@ service cloud.firestore {
              )) &&
              (!('language' in data) || data.language is string) &&
              (!('displayMode' in data) || data.displayMode in ['computer', 'phone']) &&
-             (!('avatar' in data) || data.avatar is string);
+             (!('avatar' in data) || data.avatar is string) &&
+             (!('lastUsedPlaylist' in data) || data.lastUsedPlaylist is string) &&
+             (!('customSuggestions' in data) || (
+               data.customSuggestions is list &&
+               data.customSuggestions.size() <= 8 &&
+               (data.customSuggestions.size() == 0 || (
+                 data.customSuggestions[0] is map &&
+                 data.customSuggestions[0].name is string &&
+                 data.customSuggestions[0].url is string
+               ))
+             ));
     }
 
     function isValidTask(data) {
@@ -91,6 +101,14 @@ service cloud.firestore {
              data.reason is string && data.reason.size() < 500;
     }
 
+    function isValidSpotifyTokens(data) {
+      return data.keys().hasAll(['access_token', 'refresh_token', 'expiresAt']) &&
+             data.keys().size() == 3 &&
+             data.access_token is string && data.access_token.size() > 0 && data.access_token.size() < 1000 &&
+             data.refresh_token is string && data.refresh_token.size() > 0 && data.refresh_token.size() < 1000 &&
+             data.expiresAt is number;
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
@@ -108,6 +126,11 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidUnavailability(request.resource.data);
         allow update: if isOwner(userId) && isValidUnavailability(request.resource.data);
         allow delete: if isOwner(userId);
+      }
+
+      match /spotifyTokens/{tokenId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidSpotifyTokens(request.resource.data);
       }
     }
   }

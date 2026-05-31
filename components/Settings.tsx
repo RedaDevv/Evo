@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeType, UserData, NotificationSettings, DisplayMode } from '../types';
 import { THEMES } from '../constants';
-import { Settings as SettingsIcon, Palette, Shield, Bell, User, Save, BellRing, Check, X, Monitor, Smartphone } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Shield, Bell, User, Save, BellRing, Check, X, Monitor, Smartphone, Music, Plus, Trash2 } from 'lucide-react';
 import { notificationService } from '../services/notificationService';
 
 interface SettingsProps {
@@ -24,6 +24,65 @@ const Settings: React.FC<SettingsProps> = ({
   const [newName, setNewName] = useState(userData.name || '');
   const [isSavingName, setIsSavingName] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+  // Spotify custom suggestions state and handlers
+  const defaultPlaylists = [
+    { name: '🧘 Lofi Focus', url: 'https://open.spotify.com/playlist/37i9dQZF1DWWQRwui0EXPn' },
+    { name: '🧠 Piano Fluide', url: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO' },
+    { name: '⚡ Dev Focus', url: 'https://open.spotify.com/playlist/37i9dQZF1DXdLTE7SAt9g9' },
+    { name: '☕ Cafe Jazz', url: 'https://open.spotify.com/playlist/37i9dQZF1DWZOM9CH8Z667' },
+  ];
+
+  const [suggestedPlaylists, setSuggestedPlaylists] = useState<Array<{ name: string; url: string }>>(() => {
+    return userData.customSuggestions && userData.customSuggestions.length > 0
+      ? userData.customSuggestions
+      : defaultPlaylists;
+  });
+  const [isSavingSuggestions, setIsSavingSuggestions] = useState(false);
+  const [showSuggestionsSuccess, setShowSuggestionsSuccess] = useState(false);
+
+  useEffect(() => {
+    if (userData.customSuggestions && userData.customSuggestions.length > 0) {
+      setSuggestedPlaylists(userData.customSuggestions);
+    }
+  }, [userData?.customSuggestions]);
+
+  useEffect(() => {
+    if (userData.name) {
+      setNewName(userData.name);
+    }
+  }, [userData?.name]);
+
+  const handleUpdatePlaylist = (index: number, field: 'name' | 'url', value: string) => {
+    const updated = [...suggestedPlaylists];
+    updated[index] = {
+      ...updated[index],
+      [field]: value
+    };
+    setSuggestedPlaylists(updated);
+  };
+
+  const handleAddPlaylistField = () => {
+    if (suggestedPlaylists.length >= 8) {
+      alert("Tu as atteint la limite de 8 suggestions.");
+      return;
+    }
+    setSuggestedPlaylists([...suggestedPlaylists, { name: 'Nouvelle Musique 🎵', url: 'https://open.spotify.com/playlist/37i9dQZF1DWWQRwui0EXPn' }]);
+  };
+
+  const handleRemovePlaylistField = (index: number) => {
+    setSuggestedPlaylists(suggestedPlaylists.filter((_, i) => i !== index));
+  };
+
+  const handleSavePlaylists = () => {
+    setIsSavingSuggestions(true);
+    onUpdateUserData({ customSuggestions: suggestedPlaylists });
+    setTimeout(() => {
+      setIsSavingSuggestions(false);
+      setShowSuggestionsSuccess(true);
+      setTimeout(() => setShowSuggestionsSuccess(false), 2000);
+    }, 600);
+  };
 
   const handleSaveName = async () => {
     if (!newName.trim() || newName === userData.name) return;
@@ -326,6 +385,98 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </section>
       </div>
+
+      {/* Suggestions de Musique Spotify */}
+      <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} shadow-xl mt-8`}>
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-white/5 text-[var(--primary)]">
+              <Music size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black tracking-tight">Suggestions de Musiques</h3>
+              <p className="text-xs font-bold opacity-50 uppercase tracking-wider">Personnalise les boutons rapides d'ambiance du Pomodoro</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleAddPlaylistField}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs font-black uppercase text-white tracking-wider"
+          >
+            <Plus size={14} /> Ajouter
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {suggestedPlaylists.map((pl, idx) => (
+              <div key={idx} className="flex flex-col md:flex-row gap-4 items-stretch md:items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+                <div className="w-full md:w-1/4">
+                  <label className="block text-[9px] font-black uppercase tracking-widest opacity-40 mb-1">Nom / Émoji</label>
+                  <input
+                    type="text"
+                    value={pl.name}
+                    onChange={(e) => handleUpdatePlaylist(idx, 'name', e.target.value)}
+                    placeholder="Ex: 🧘 Lofi Focus"
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-[var(--primary)] transition-all"
+                  />
+                </div>
+
+                <div className="w-full md:flex-1">
+                  <label className="block text-[9px] font-black uppercase tracking-widest opacity-40 mb-1">Lien Spotify (Playlist, Album, Artiste...)</label>
+                  <input
+                    type="text"
+                    value={pl.url}
+                    onChange={(e) => handleUpdatePlaylist(idx, 'url', e.target.value)}
+                    placeholder="https://open.spotify.com/playlist/..."
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-medium outline-none focus:border-[var(--primary)] transition-all"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePlaylistField(idx)}
+                    className="p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 active:scale-90 transition-all"
+                    title="Supprimer la suggestion"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {suggestedPlaylists.length === 0 && (
+            <div className="text-center py-6 opacity-40 italic text-xs font-bold">
+              Aucune suggestion de musique configurée. Clique sur "Ajouter" pour créer d'élégantes suggestions !
+            </div>
+          )}
+
+          <div className="pt-4 flex items-center justify-between border-t border-white/5">
+            <button
+              type="button"
+              onClick={() => setSuggestedPlaylists(defaultPlaylists)}
+              className="text-xs font-bold opacity-50 hover:opacity-100 hover:underline cursor-pointer"
+            >
+              Réinitialiser par défaut
+            </button>
+
+            <button
+              onClick={handleSavePlaylists}
+              disabled={isSavingSuggestions}
+              className="px-6 py-3.5 bg-emerald-500 text-black hover:bg-emerald-400 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isSavingSuggestions ? (
+                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
+              {showSuggestionsSuccess ? 'SUGGESTIONS ENREGISTRÉES !' : 'SAUVEGARDER LES SUGGESTIONS'}
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
