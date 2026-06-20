@@ -53,7 +53,7 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.keys().hasOnly(['email', 'name', 'theme', 'role', 'notificationsEnabled', 'notificationSettings', 'language', 'displayMode', 'avatar', 'customSuggestions', 'lastUsedPlaylist']) &&
+      return data.keys().hasOnly(['email', 'name', 'theme', 'role', 'notificationsEnabled', 'notificationSettings', 'language', 'displayMode', 'avatar', 'customSuggestions', 'lastUsedPlaylist', 'isPremium', 'premiumSince']) &&
              (!('email' in data) || (data.email is string && data.email.size() > 0)) &&
              (!('name' in data) || (data.name is string && data.name.size() > 0)) &&
              (!('theme' in data) || data.theme is string) &&
@@ -70,6 +70,8 @@ service cloud.firestore {
              (!('displayMode' in data) || data.displayMode in ['computer', 'phone']) &&
              (!('avatar' in data) || data.avatar is string) &&
              (!('lastUsedPlaylist' in data) || data.lastUsedPlaylist is string) &&
+             (!('isPremium' in data) || data.isPremium is bool) &&
+             (!('premiumSince' in data) || data.premiumSince is string || data.premiumSince is int || data.premiumSince is timestamp) &&
              (!('customSuggestions' in data) || (
                data.customSuggestions is list &&
                data.customSuggestions.size() <= 8 &&
@@ -110,9 +112,9 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data);
       
       match /tasks/{taskId} {
         allow read: if isOwner(userId);

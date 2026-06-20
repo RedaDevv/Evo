@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Task, ThemeType, TaskStatus, Unavailability } from '../../types';
+import { Task, ThemeType, TaskStatus, Unavailability, UserData } from '../../types';
 import { THEMES } from '../../constants';
 import { GoogleGenAI } from '@google/genai';
 import { 
@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Link,
   CalendarCheck,
-  ArrowRight
+  ArrowRight,
+  Crown
 } from 'lucide-react';
 import { firebaseService } from '../../services/firebaseService';
 import { googleCalendarService, GoogleCalendarEvent } from '../../services/googleCalendarService';
@@ -24,10 +25,13 @@ interface SmartPlanningProps {
   tasks: Task[];
   unavailabilities: Unavailability[];
   theme: ThemeType;
+  userData?: Partial<UserData>;
+  onGoToSettings?: () => void;
 }
 
-const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, theme }) => {
+const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, theme, userData, onGoToSettings }) => {
   const currentTheme = THEMES[theme] || THEMES['midnight'];
+  const isPremium = !!userData?.isPremium;
   const [planning, setPlanning] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [justification, setJustification] = useState('');
@@ -486,7 +490,20 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       {/* Google Calendar Connection Status Bar */}
-      <div className={`${currentTheme.card} p-5 rounded-3xl border ${currentTheme.accent} shadow-md flex flex-col sm:flex-row items-center justify-between gap-4`}>
+      <div className={`${currentTheme.card} p-5 rounded-3xl border ${currentTheme.accent} shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden`}>
+        {!isPremium && (
+          <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-md flex items-center justify-between px-6 animate-in fade-in duration-300">
+            <span className="text-xs font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
+              <Crown size={14} className="animate-pulse fill-amber-400/20" /> SYNCHRONISATION GOOGLE CALENDAR
+            </span>
+            <button 
+              onClick={onGoToSettings}
+              className="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 rounded-xl font-bold text-[10px] text-black tracking-wider uppercase hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              Débloquer ✨
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <div className={`p-3 rounded-2xl ${accessToken ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
             <Calendar size={20} />
@@ -545,14 +562,24 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
-            <button 
-              onClick={generatePlanning}
-              disabled={isLoading || tasks.filter(t => t.status !== TaskStatus.DONE).length === 0}
-              className={`${currentTheme.primary} text-white px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 flex-1`}
-            >
-              {isLoading ? <Loader2 className="animate-spin w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              GÉNÉRER AVEC L'IA (GEMINI)
-            </button>
+            {isPremium ? (
+              <button 
+                onClick={generatePlanning}
+                disabled={isLoading || tasks.filter(t => t.status !== TaskStatus.DONE).length === 0}
+                className={`${currentTheme.primary} text-white px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 flex-1`}
+              >
+                {isLoading ? <Loader2 className="animate-spin w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                GÉNÉRER AVEC L'IA (GEMINI)
+              </button>
+            ) : (
+              <button 
+                onClick={onGoToSettings}
+                className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex-1 cursor-pointer"
+              >
+                <Crown className="w-4 h-4 fill-black/10" />
+                DÉBLOQUER L'IA GÉNÉTIQUE (PREMIUM ✨)
+              </button>
+            )}
 
             <button 
               onClick={generateDeterministicPlanning}

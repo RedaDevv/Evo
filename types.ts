@@ -94,6 +94,8 @@ export interface UserData {
   language?: string;
   customSuggestions?: SuggestionPlaylist[];
   lastUsedPlaylist?: string;
+  isPremium?: boolean;
+  premiumSince?: any;
 }
 
 export interface AppState {

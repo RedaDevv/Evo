@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeType, UserData, NotificationSettings, DisplayMode } from '../types';
 import { THEMES } from '../constants';
-import { Settings as SettingsIcon, Palette, Shield, Bell, User, Save, BellRing, Check, X, Monitor, Smartphone, Music, Plus, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Shield, Bell, User, Save, BellRing, Check, X, Monitor, Smartphone, Music, Plus, Trash2, Crown } from 'lucide-react';
 import { notificationService } from '../services/notificationService';
+import { PayPalPremium } from './PayPalPremium';
 
 interface SettingsProps {
   theme: ThemeType;
@@ -135,6 +136,13 @@ const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      {/* Offre Premium */}
+      <PayPalPremium 
+        theme={theme} 
+        userData={userData} 
+        onUpdateUserData={onUpdateUserData} 
+      />
+
       {/* Thèmes */}
       <section>
         <div className="flex items-center gap-3 mb-8">
@@ -387,8 +395,34 @@ const Settings: React.FC<SettingsProps> = ({
       </div>
 
       {/* Suggestions de Musique Spotify */}
-      <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} shadow-xl mt-8`}>
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+      <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} shadow-xl mt-8 relative overflow-hidden`}>
+        {!userData.isPremium && (
+          <div className="absolute inset-0 z-20 backdrop-blur-md bg-black/55 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-3 animate-pulse">
+              <Crown size={28} className="fill-amber-500/10" />
+            </div>
+            <h4 className="text-lg font-black text-white tracking-tight flex items-center gap-1.5 mb-1.5">
+              Sauvegarde de Suggestions Spotify Verrouillée 🔑
+            </h4>
+            <p className="text-[11px] text-white/70 max-w-md mb-5 font-semibold leading-relaxed">
+              Passe Premium pour sauvegarder de manière permanente jusqu'à 8 suggestions personnalisées de playlists Spotify dans le Cloud.
+            </p>
+            <button
+              onClick={() => {
+                const el = document.getElementById('paypal-sdk-script') || document.querySelector('.p-8.rounded-\\[2\\.5rem\\]');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-black font-extrabold text-[10px] uppercase tracking-wider shadow-lg flex items-center gap-2 hover:scale-[1.03] active:scale-95 transition-all cursor-pointer"
+            >
+              Aller à l'offre d'élite ✨
+            </button>
+          </div>
+        )}
+        <div className={`flex items-center justify-between mb-8 pb-4 border-b border-white/5 ${!userData.isPremium ? 'filter blur-[1px]' : ''}`}>
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-xl bg-white/5 text-[var(--primary)]">
               <Music size={24} />
@@ -407,7 +441,7 @@ const Settings: React.FC<SettingsProps> = ({
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className={`space-y-4 ${!userData.isPremium ? 'filter blur-[4px] select-none pointer-events-none' : ''}`}>
           <div className="grid grid-cols-1 gap-4">
             {suggestedPlaylists.map((pl, idx) => (
               <div key={idx} className="flex flex-col md:flex-row gap-4 items-stretch md:items-center bg-white/5 p-4 rounded-2xl border border-white/5">

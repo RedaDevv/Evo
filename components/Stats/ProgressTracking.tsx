@@ -1,16 +1,20 @@
 
 import React, { useMemo } from 'react';
-import { Task, TaskStatus, ThemeType, EisenhowerQuadrant } from '../../types';
+import { Task, TaskStatus, ThemeType, EisenhowerQuadrant, UserData } from '../../types';
 import { THEMES } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Crown, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 interface ProgressTrackingProps {
   tasks: Task[];
   theme: ThemeType;
+  userData?: Partial<UserData>;
+  onGoToSettings?: () => void;
 }
 
-const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme }) => {
+const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme, userData, onGoToSettings }) => {
   const currentTheme = THEMES[theme] || THEMES['midnight'];
+  const isPremium = !!userData?.isPremium;
 
   // 1. Calculer les données des 7 derniers jours pour le graphique
   const weeklyData = useMemo(() => {
@@ -158,12 +162,31 @@ const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme }) => 
         </div>
       </div>
 
-      <div className={`${currentTheme.card} rounded-3xl p-8 border ${currentTheme.accent} shadow-sm`}>
-         <div className="flex justify-between items-center mb-6">
+      <div className={`${currentTheme.card} rounded-3xl p-8 border ${currentTheme.accent} shadow-sm relative overflow-hidden`}>
+         {!isPremium && (
+           <div className="absolute inset-0 z-20 backdrop-blur-md bg-black/50 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
+             <div className="p-4 rounded-3xl bg-amber-500/10 text-amber-500 ring-2 ring-amber-500/20 mb-4 animate-bounce">
+               <Crown size={32} className="fill-amber-500/20" />
+             </div>
+             <h4 className="text-xl font-black text-white tracking-tight flex items-center gap-1.5 mb-2">
+               Profil d'Épreuve Verrouillé 🔑
+             </h4>
+             <p className="text-xs text-white/70 max-w-md mb-6 font-medium leading-relaxed">
+               Passe Premium pour débloquer l'évaluation cognitive de ton Organisation, ta Discipline, ta Priorisation et ton Assiduité d'étudiant.
+             </p>
+             <button
+               onClick={onGoToSettings}
+               className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-black font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-2 hover:scale-[1.03] active:scale-95 transition-all cursor-pointer"
+             >
+               DEVENIR PREMIUM ✨ <ArrowRight size={14} />
+             </button>
+           </div>
+         )}
+         <div className={`flex justify-between items-center mb-6 ${!isPremium ? 'filter blur-[1px]' : ''}`}>
             <h3 className="text-xl font-bold">Profil d'Étudiant</h3>
             <p className="text-xs text-[var(--text)]/40">Basé sur ton activité récente</p>
          </div>
-         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-8 ${!isPremium ? 'filter blur-[4px] select-none pointer-events-none' : ''}`}>
             <div className="space-y-6">
               <ProgressBar label="Organisation" progress={metrics.organisation} color="bg-[var(--primary)]" description="Capacité à classer les tâches par importance." />
               <ProgressBar label="Discipline (Focus)" progress={metrics.discipline} color="bg-[var(--secondary)]" description="Respect des temps de travail prévus." />

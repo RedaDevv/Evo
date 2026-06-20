@@ -14,6 +14,7 @@ import {
   doc, 
   setDoc, 
   getDoc, 
+  getDocs,
   onSnapshot, 
   collection, 
   query, 
@@ -270,6 +271,29 @@ export const firebaseService = {
       await updateProfile(auth.currentUser, { displayName: name });
       const userRef = doc(db, 'users', auth.currentUser.uid);
       await updateDoc(userRef, { name });
+    }
+  },
+
+  async getAllUsers(): Promise<any[]> {
+    const usersRef = collection(db, 'users');
+    try {
+      const snap = await getDocs(usersRef);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, 'users');
+      return [];
+    }
+  },
+
+  async setUserPremiumStatus(targetUserId: string, isPremium: boolean) {
+    const userRef = doc(db, 'users', targetUserId);
+    try {
+      await updateDoc(userRef, { 
+        isPremium,
+        premiumSince: isPremium ? Date.now() : null
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${targetUserId}`);
     }
   },
 

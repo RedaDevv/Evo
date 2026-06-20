@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
   CheckSquare, 
@@ -27,8 +28,9 @@ import TaskModal from './components/Tasks/TaskModal';
 import AuthScreen from './components/Auth/AuthScreen';
 import Settings from './components/Settings';
 import ModeSelection from './components/ModeSelection';
+import AdminPanel from './components/AdminPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Mail, RefreshCw, LogOut as LogOutIcon, Settings as SettingsIcon } from 'lucide-react';
+import { Mail, RefreshCw, LogOut as LogOutIcon, Settings as SettingsIcon, Shield } from 'lucide-react';
 import { handleSpotifyCallback } from './spotify';
 
 const App: React.FC = () => {
@@ -350,11 +352,11 @@ const App: React.FC = () => {
       case 'matrix':
         return <EisenhowerMatrix tasks={tasks} onUpdateTask={updateTask} theme={theme} />;
       case 'planning':
-        return <SmartPlanning tasks={tasks} unavailabilities={unavailabilities} theme={theme} />;
+        return <SmartPlanning tasks={tasks} unavailabilities={unavailabilities} theme={theme} userData={userData} onGoToSettings={() => setActiveTab('settings')} />;
       case 'focus':
-        return <Pomodoro theme={theme} tasks={tasks} onUpdateTask={updateTask} userData={userData} />;
+        return <Pomodoro theme={theme} tasks={tasks} onUpdateTask={updateTask} userData={userData} onGoToSettings={() => setActiveTab('settings')} />;
       case 'stats':
-        return <ProgressTracking tasks={tasks} theme={theme} />;
+        return <ProgressTracking tasks={tasks} theme={theme} userData={userData} onGoToSettings={() => setActiveTab('settings')} />;
       case 'settings':
         return (
           <Settings 
@@ -365,6 +367,11 @@ const App: React.FC = () => {
             onUpdateProfileName={(name) => firebaseService.updateProfileName(name)}
           />
         );
+      case 'admin':
+        if (currentUser?.email === 'reda.elhajji.43@gmail.com') {
+          return <AdminPanel theme={theme} currentUserEmail={currentUser.email} />;
+        }
+        return null;
       default:
         return (
           <Dashboard 
@@ -390,6 +397,7 @@ const App: React.FC = () => {
     { id: 'focus', label: 'Focus', icon: Timer },
     { id: 'stats', label: 'Analyses', icon: BarChart3 },
     { id: 'settings', label: 'Réglages', icon: SettingsIcon },
+    ...(currentUser?.email === 'reda.elhajji.43@gmail.com' ? [{ id: 'admin', label: 'Admin 👑', icon: Shield }] : [])
   ];
 
   return (
@@ -409,33 +417,52 @@ const App: React.FC = () => {
               {currentUser.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-black truncate">{currentUser.name}</p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className="text-xs font-black truncate">{currentUser.name}</p>
+                {userData?.isPremium && (
+                  <span className="shrink-0 text-[8px] font-black bg-gradient-to-r from-amber-400 to-amber-600 text-black px-1.5 py-0.5 rounded shadow-sm">
+                    PREMIUM ✨
+                  </span>
+                )}
+              </div>
               <p className="text-[10px] opacity-40 font-bold truncate">{currentUser.email}</p>
             </div>
           </div>
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-300 ${
-                activeTab === item.id 
-                ? `${currentTheme.button} shadow-lg scale-[1.02]` 
-                : `hover:bg-white/5 opacity-60 font-medium`
-              }`}
-            >
-              <item.icon size={22} />
-              <span className="font-bold">{item.label}</span>
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            const isDarkText = theme === 'midnight' || theme === 'neon';
+            const activeTextColor = isDarkText ? 'text-black' : 'text-white';
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="relative w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-200 active:scale-[0.98] group overflow-hidden cursor-pointer"
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNavigationPill"
+                    className={`absolute inset-0 rounded-2xl ${currentTheme.button} shadow-lg`}
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className={`relative z-10 flex items-center gap-3 text-sm font-bold ${
+                  isActive ? `${activeTextColor}` : 'opacity-60 hover:opacity-100'
+                }`}>
+                  <item.icon size={22} />
+                  <span>{item.label}</span>
+                </span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="p-6 border-t border-white/5 space-y-6">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-black text-red-400 hover:bg-red-500/10 transition-all uppercase tracking-widest"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-black text-red-400 hover:bg-red-500/10 transition-all uppercase tracking-widest cursor-pointer"
           >
             <LogOut size={16} /> Déconnexion
           </button>
@@ -443,12 +470,28 @@ const App: React.FC = () => {
       </aside>
 
       <nav className={`${isPhoneMode ? 'flex' : 'md:hidden'} fixed bottom-0 left-0 right-0 z-50 ${currentTheme.card} border-t ${currentTheme.accent} px-2 py-3 flex justify-around shadow-2xl`}>
-        {navItems.map((item) => (
-          <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex flex-col items-center gap-1 p-2 ${activeTab === item.id ? currentTheme.secondary : 'opacity-40'}`}>
-            <item.icon size={20} />
-            <span className="text-[10px] font-bold">{item.label}</span>
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button 
+              key={item.id} 
+              onClick={() => setActiveTab(item.id)} 
+              className="relative flex flex-col items-center gap-1 p-2 min-w-[50px] transition-all cursor-pointer"
+            >
+              <item.icon size={20} className={`relative z-10 transition-colors duration-200 ${isActive ? currentTheme.secondary : 'opacity-45'}`} />
+              <span className={`text-[10px] font-bold relative z-10 transition-colors duration-200 ${isActive ? currentTheme.secondary : 'opacity-45'}`}>
+                {item.label}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="activeMobileDot"
+                  className={`absolute bottom-0 w-1.5 h-1.5 rounded-full ${currentTheme.primary}`}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       <main className={`flex-1 ${isPhoneMode ? 'p-4 pb-24' : 'p-4 md:p-10 pb-24 md:pb-10'} max-w-7xl mx-auto w-full transition-all duration-500`}>
@@ -465,7 +508,17 @@ const App: React.FC = () => {
           </button>
         </header>
 
-        {renderContent()}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {renderContent()}
+          </motion.div>
+        </AnimatePresence>
 
         {isTaskModalOpen && (
           <TaskModal 

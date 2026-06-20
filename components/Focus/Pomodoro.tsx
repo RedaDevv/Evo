@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Task, TaskStatus, ThemeType, UserData } from '../../types';
 import { THEMES } from '../../constants';
-import { Play, Pause, RotateCcw, Coffee, Brain, Bell, Music, ExternalLink, RefreshCw, SkipBack, SkipForward, Disc, Link, Radio } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Bell, Music, ExternalLink, RefreshCw, SkipBack, SkipForward, Disc, Link, Radio, Crown, Sliders, Volume2, Sparkles } from 'lucide-react';
 import { notificationService } from '../../services/notificationService';
 import { auth, db } from '../../firebase';
 import { doc, onSnapshot, deleteDoc } from 'firebase/firestore';
@@ -14,9 +14,10 @@ interface PomodoroProps {
   tasks: Task[];
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   userData: Partial<UserData>;
+  onGoToSettings?: () => void;
 }
 
-const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userData }) => {
+const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userData, onGoToSettings }) => {
   const currentTheme = THEMES[theme];
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
@@ -44,6 +45,204 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
   // User Playlists states
   const [userPlaylists, setUserPlaylists] = useState<Array<{ name: string; url: string; id: string }>>([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState<boolean>(false);
+
+  // New Premium Binaural Wave & Audio Synthesizer states
+  const [activeCompanionMode, setActiveCompanionMode] = useState<'spotify' | 'binaural'>('spotify');
+  const [ambientPlaying, setAmbientPlaying] = useState<boolean>(false);
+  const [binauralPreset, setBinauralPreset] = useState<'alpha' | 'beta' | 'theta'>('alpha');
+  const [masterVolume, setMasterVolume] = useState<number>(0.5);
+  const [binauralVolume, setBinauralVolume] = useState<number>(0.6);
+  const [noiseVolume, setNoiseVolume] = useState<number>(0.4);
+  const [solfeggioVolume, setSolfeggioVolume] = useState<number>(0.15);
+
+  // Audio nodes and context refs
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const mainGainRef = useRef<GainNode | null>(null);
+  const noiseGainRef = useRef<GainNode | null>(null);
+  const binauralGainRef = useRef<GainNode | null>(null);
+  const solfeggioGainRef = useRef<GainNode | null>(null);
+  const oscLeftRef = useRef<OscillatorNode | null>(null);
+  const oscRightRef = useRef<OscillatorNode | null>(null);
+  const oscSolfeggioRef = useRef<OscillatorNode | null>(null);
+  const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  // Safely stop and disconnect all audio nodes
+  const stopSynthesizer = () => {
+    try {
+      if (oscLeftRef.current) { oscLeftRef.current.stop(); oscLeftRef.current.disconnect(); oscLeftRef.current = null; }
+      if (oscRightRef.current) { oscRightRef.current.stop(); oscRightRef.current.disconnect(); oscRightRef.current = null; }
+      if (oscSolfeggioRef.current) { oscSolfeggioRef.current.stop(); oscSolfeggioRef.current.disconnect(); oscSolfeggioRef.current = null; }
+      if (noiseSourceRef.current) { noiseSourceRef.current.stop(); noiseSourceRef.current.disconnect(); noiseSourceRef.current = null; }
+      
+      if (binauralGainRef.current) { binauralGainRef.current.disconnect(); binauralGainRef.current = null; }
+      if (noiseGainRef.current) { noiseGainRef.current.disconnect(); noiseGainRef.current = null; }
+      if (solfeggioGainRef.current) { solfeggioGainRef.current.disconnect(); solfeggioGainRef.current = null; }
+      if (mainGainRef.current) { mainGainRef.current.disconnect(); mainGainRef.current = null; }
+      
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        audioCtxRef.current.close();
+        audioCtxRef.current = null;
+      }
+    } catch (error) {
+      console.error("Erreur d'arrêt du synthétiseur d'ondes :", error);
+    }
+    setAmbientPlaying(false);
+  };
+
+  // Start the synthesizer
+  const startSynthesizer = (overridePreset = binauralPreset) => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        console.warn("La synthèse audio n'est pas supportée.");
+        return;
+      }
+      
+      const ctx = new AudioContextClass();
+      audioCtxRef.current = ctx;
+      
+      // Master volume
+      const mainGain = ctx.createGain();
+      mainGain.gain.setValueAtTime(masterVolume, ctx.currentTime);
+      mainGain.connect(ctx.destination);
+      mainGainRef.current = mainGain;
+      
+      // Noise Node
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(noiseVolume, ctx.currentTime);
+      noiseGain.connect(mainGain);
+      noiseGainRef.current = noiseGain;
+      
+      // Generate White Noise with continuous buffers
+      const bufferSize = ctx.sampleRate * 2;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = noiseBuffer;
+      noiseSource.loop = true;
+      
+      // High-quality lowpass filter to make it sound like a peaceful breeze / heavy rain
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'lowpass';
+      noiseFilter.frequency.setValueAtTime(450, ctx.currentTime); 
+      
+      noiseSource.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseSource.start();
+      noiseSourceRef.current = noiseSource;
+      
+      // Binaural generator
+      const binauralGain = ctx.createGain();
+      binauralGain.gain.setValueAtTime(binauralVolume, ctx.currentTime);
+      binauralGain.connect(mainGain);
+      binauralGainRef.current = binauralGain;
+      
+      const merger = ctx.createChannelMerger(2);
+      
+      let baseFreq = 180; // warm carrier freq
+      let offset = 10; // default alpha 10hz
+      if (overridePreset === 'beta') offset = 15;
+      if (overridePreset === 'theta') offset = 6;
+      
+      const leftOsc = ctx.createOscillator();
+      leftOsc.type = 'sine';
+      leftOsc.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+      
+      const rightOsc = ctx.createOscillator();
+      rightOsc.type = 'sine';
+      rightOsc.frequency.setValueAtTime(baseFreq + offset, ctx.currentTime);
+      
+      const leftGain = ctx.createGain();
+      const rightGain = ctx.createGain();
+      leftGain.gain.setValueAtTime(0.5, ctx.currentTime);
+      rightGain.gain.setValueAtTime(0.5, ctx.currentTime);
+      
+      leftOsc.connect(leftGain);
+      leftGain.connect(merger, 0, 0);
+      
+      rightOsc.connect(rightGain);
+      rightGain.connect(merger, 0, 1);
+      
+      merger.connect(binauralGain);
+      
+      leftOsc.start();
+      rightOsc.start();
+      
+      oscLeftRef.current = leftOsc;
+      oscRightRef.current = rightOsc;
+      
+      // Solfeggio 528Hz tone node
+      const solfeggioGain = ctx.createGain();
+      solfeggioGain.gain.setValueAtTime(solfeggioVolume, ctx.currentTime);
+      solfeggioGain.connect(mainGain);
+      solfeggioGainRef.current = solfeggioGain;
+      
+      const solfeggioOsc = ctx.createOscillator();
+      solfeggioOsc.type = 'sine';
+      solfeggioOsc.frequency.setValueAtTime(528, ctx.currentTime);
+      solfeggioOsc.connect(solfeggioGain);
+      solfeggioOsc.start();
+      
+      oscSolfeggioRef.current = solfeggioOsc;
+      
+      setAmbientPlaying(true);
+    } catch (err) {
+      console.error("Erreur lors de l'initialisation du synthétiseur d'ondes :", err);
+    }
+  };
+
+  // Live sliders volume update helper
+  const handleUpdateVolume = (type: 'master' | 'binaural' | 'noise' | 'solfeggio', value: number) => {
+    if (type === 'master') {
+      setMasterVolume(value);
+      if (mainGainRef.current && audioCtxRef.current) {
+        mainGainRef.current.gain.setValueAtTime(value, audioCtxRef.current.currentTime);
+      }
+    } else if (type === 'binaural') {
+      setBinauralVolume(value);
+      if (binauralGainRef.current && audioCtxRef.current) {
+        binauralGainRef.current.gain.setValueAtTime(value, audioCtxRef.current.currentTime);
+      }
+    } else if (type === 'noise') {
+      setNoiseVolume(value);
+      if (noiseGainRef.current && audioCtxRef.current) {
+        noiseGainRef.current.gain.setValueAtTime(value, audioCtxRef.current.currentTime);
+      }
+    } else if (type === 'solfeggio') {
+      setSolfeggioVolume(value);
+      if (solfeggioGainRef.current && audioCtxRef.current) {
+        solfeggioGainRef.current.gain.setValueAtTime(value, audioCtxRef.current.currentTime);
+      }
+    }
+  };
+
+  // Update preset frequencies on the fly
+  const handleUpdatePreset = (preset: 'alpha' | 'beta' | 'theta') => {
+    setBinauralPreset(preset);
+    if (ambientPlaying) {
+      let offset = 10;
+      if (preset === 'beta') offset = 15;
+      if (preset === 'theta') offset = 6;
+      
+      if (oscLeftRef.current && oscRightRef.current && audioCtxRef.current) {
+        const ctx = audioCtxRef.current;
+        const baseFreq = 180;
+        oscLeftRef.current.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+        oscRightRef.current.frequency.setValueAtTime(baseFreq + offset, ctx.currentTime);
+      }
+    }
+  };
+
+  // Component unmount cleanup
+  useEffect(() => {
+    return () => {
+      stopSynthesizer();
+    };
+  }, []);
 
   // Sync with loaded lastUsedPlaylist from database
   useEffect(() => {
@@ -362,26 +561,47 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
         </div>
       </div>
 
-      {/* Colonne de droite : Spotify Companion Card */}
+      {/* Colonne de droite : Spotify Companion Card or Binaural Card */}
       <div className="w-full lg:max-w-md bg-white/5 border border-white/10 rounded-[2.5rem] p-6 lg:p-8 shadow-xl flex flex-col space-y-6 self-stretch justify-between">
         <div>
-          {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1DB954]/10 flex items-center justify-center text-[#1DB954]">
-                <Music size={22} className={currentTrack?.isPlaying ? "animate-spin" : ""} />
-              </div>
-              <div>
-                <h4 className="font-black text-lg tracking-tight">Ambiance Spotify</h4>
-                <p className="text-[10px] uppercase font-bold opacity-40 tracking-wider">Compagnon de concentration</p>
-              </div>
-            </div>
-            {spotifyConnected && (
-              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-[#1DB954]/15 text-[#1DB954] uppercase">
-                <span className="w-2 h-2 rounded-full bg-[#1DB954] " /> CONNECTÉ
-              </span>
-            )}
+          {/* Main Companion Mode Tab selection */}
+          <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 mb-6">
+            <button
+              type="button"
+              onClick={() => setActiveCompanionMode('spotify')}
+              className={`flex-1 py-2.5 text-center text-[10.5px] font-black uppercase tracking-wider rounded-xl transition-all ${activeCompanionMode === 'spotify' ? 'bg-white/10 text-white shadow-sm' : 'opacity-50 hover:opacity-100'}`}
+            >
+              🎵 Ambiance Spotify
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCompanionMode('binaural')}
+              className={`flex-1 py-2.5 text-center text-[10.5px] font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${activeCompanionMode === 'binaural' ? 'bg-amber-400 text-black font-black shadow-md' : 'opacity-60 hover:opacity-100'}`}
+            >
+              <Brain size={13} className={activeCompanionMode === 'binaural' ? 'fill-black/10' : ''} />
+              Ondes Neuro-Focus
+            </button>
           </div>
+
+          {activeCompanionMode === 'spotify' ? (
+            <>
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#1DB954]/10 flex items-center justify-center text-[#1DB954]">
+                    <Music size={22} className={currentTrack?.isPlaying ? "animate-spin" : ""} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-lg tracking-tight">Ambiance Spotify</h4>
+                    <p className="text-[10px] uppercase font-bold opacity-40 tracking-wider">Compagnon de concentration</p>
+                  </div>
+                </div>
+                {spotifyConnected && (
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-[#1DB954]/15 text-[#1DB954] uppercase">
+                    <span className="w-2 h-2 rounded-full bg-[#1DB954] " /> CONNECTÉ
+                  </span>
+                )}
+              </div>
 
           {!spotifyConnected ? (
             /* NON_CONNECTED VIEW */
@@ -480,60 +700,77 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                 <div className="space-y-4">
                   {/* Playlist Fast Selector */}
                   <div className="space-y-4">
-                    {userPlaylists.length > 0 ? (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-black uppercase text-white/40 tracking-wider">
-                            📁 Mes Playlists Personnelles ({userPlaylists.length})
-                          </label>
-                          <button
+                    <div className="relative overflow-hidden min-h-[60px] rounded-2xl">
+                      {!userData.isPremium && (
+                        <div className="absolute inset-0 z-10 bg-black/75 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center rounded-2xl border border-white/5 animate-in fade-in duration-300">
+                          <Crown size={20} className="text-amber-400 animate-pulse mb-1.5 fill-amber-400/20" />
+                          <h5 className="text-[11px] font-black text-white tracking-tight uppercase">Playlists Personnelles Verrouillées</h5>
+                          <p className="text-[9px] text-white/60 mb-2 max-w-[190px]">L'intégration de tes propres playlists Spotify requiert un compte Premium.</p>
+                          <button 
                             type="button"
-                            onClick={fetchUserPlaylists}
-                            disabled={isLoadingPlaylists}
-                            className="text-[10px] font-bold text-emerald-400 hover:underline flex items-center gap-1"
+                            onClick={onGoToSettings} 
+                            className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 text-black font-extrabold text-[9px] uppercase tracking-wide cursor-pointer"
                           >
-                            <RefreshCw size={10} className={isLoadingPlaylists ? "animate-spin" : ""} /> Actualiser
+                            Passer Premium ✨
                           </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto pr-1">
-                          {userPlaylists.map((pl) => (
+                      )}
+                      
+                      {userPlaylists.length > 0 ? (
+                        <div className={`space-y-2 ${!userData.isPremium ? 'filter blur-[3px]' : ''}`}>
+                          <div className="flex justify-between items-center bg-transparent">
+                            <label className="text-[10px] font-black uppercase text-white/40 tracking-wider">
+                              📁 Mes Playlists Personnelles ({userPlaylists.length})
+                            </label>
                             <button
-                              key={pl.id}
                               type="button"
-                              onClick={() => handleSelectPlaylist(pl.url)}
-                              className={`py-2 px-3 rounded-xl border text-left text-xs font-bold truncate transition-all ${
-                                customPlaylist === pl.url 
-                                  ? `${currentTheme.primary} border-transparent text-white` 
-                                  : 'bg-white/5 hover:bg-white/10 border-white/5 text-[var(--text)]'
-                              }`}
-                              title={pl.name}
+                              onClick={fetchUserPlaylists}
+                              disabled={isLoadingPlaylists}
+                              className="text-[10px] font-bold text-emerald-400 hover:underline flex items-center gap-1"
                             >
-                              🎵 {pl.name}
+                              <RefreshCw size={10} className={isLoadingPlaylists ? "animate-spin" : ""} /> Actualiser
                             </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 bg-white/5 rounded-2xl border border-white/10 space-y-2 px-3">
-                        {isLoadingPlaylists ? (
-                          <div className="flex items-center justify-center gap-2 text-xs py-2 opacity-60">
-                            <RefreshCw size={12} className="animate-spin text-[#1DB954]" />
-                            <span>Chargement de tes playlists...</span>
                           </div>
-                        ) : (
-                          <>
-                            <p className="text-[11px] font-bold opacity-50">Aucune playlist personnelle trouvée.</p>
-                            <button
-                              type="button"
-                              onClick={redirectToSpotifyAuth}
-                              className="text-[10px] font-extrabold text-[#1DB954] hover:underline"
-                            >
-                              Re-lier mon compte pour accorder l'accès aux playlists ➔
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
+                          <div className="grid grid-cols-2 gap-2 max-h-[150px] overflow-y-auto pr-1">
+                            {userPlaylists.map((pl) => (
+                              <button
+                                key={pl.id}
+                                type="button"
+                                onClick={() => handleSelectPlaylist(pl.url)}
+                                className={`py-2 px-3 rounded-xl border text-left text-xs font-bold truncate transition-all ${
+                                  customPlaylist === pl.url 
+                                    ? `${currentTheme.primary} border-transparent text-white` 
+                                    : 'bg-white/5 hover:bg-white/10 border-white/5 text-[var(--text)]'
+                                }`}
+                                title={pl.name}
+                              >
+                                🎵 {pl.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`text-center py-4 bg-white/5 rounded-2xl border border-white/10 space-y-2 px-3 ${!userData.isPremium ? 'filter blur-[3px]' : ''}`}>
+                          {isLoadingPlaylists ? (
+                            <div className="flex items-center justify-center gap-2 text-xs py-2 opacity-60">
+                              <RefreshCw size={12} className="animate-spin text-[#1DB954]" />
+                              <span>Chargement de tes playlists...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-[11px] font-bold opacity-50">Aucune playlist personnelle trouvée.</p>
+                              <button
+                                type="button"
+                                onClick={redirectToSpotifyAuth}
+                                className="text-[10px] font-extrabold text-[#1DB954] hover:underline"
+                              >
+                                Re-lier mon compte pour accorder l'accès aux playlists ➔
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     <div className="space-y-2 border-t border-white/5 pt-3">
                       <label className="text-[10px] font-black uppercase text-white/40 tracking-wider">
@@ -571,10 +808,21 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                       />
                     </div>
                     <button
-                      onClick={() => playlistInput && handleSelectPlaylist(playlistInput)}
-                      className="px-4 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold transition-all"
+                      type="button"
+                      onClick={() => {
+                        if (!userData.isPremium) {
+                          onGoToSettings?.();
+                        } else if (playlistInput) {
+                          handleSelectPlaylist(playlistInput);
+                        }
+                      }}
+                      className={`px-4 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                        !userData.isPremium 
+                          ? 'bg-gradient-to-r from-amber-400 to-amber-500 hover:opacity-90 text-black' 
+                          : 'bg-white/10 hover:bg-white/15 text-white'
+                      }`}
                     >
-                      OK
+                      {!userData.isPremium && <Crown size={12} className="fill-black/10" />} OK
                     </button>
                   </div>
 
@@ -670,6 +918,191 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                 </div>
               )}
             </div>
+          )}
+        </>
+      ) : (
+            /* BINAURAL BRAINWAVE GENERATOR BLOCK */
+            <>
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
+                    <Brain size={22} className={ambientPlaying ? "animate-pulse text-amber-400" : "text-amber-500/40"} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-lg tracking-tight">Ondes Élite</h4>
+                    <p className="text-[10px] uppercase font-bold opacity-45 tracking-wider">Synchroniseur de Cerveau</p>
+                  </div>
+                </div>
+                <span className="text-[9px] font-black bg-gradient-to-r from-amber-400 to-amber-600 text-black px-2 py-0.5 rounded shadow-sm">
+                  PREMIUM ✨
+                </span>
+              </div>
+
+              {!userData.isPremium ? (
+                /* LOCKED PREMIUM BLOCK */
+                <div className="flex flex-col items-center justify-center text-center py-12 px-2 space-y-6">
+                  <div className="w-20 h-20 bg-amber-500/5 rounded-full border border-amber-500/20 flex items-center justify-center text-amber-400 animate-pulse">
+                    <Crown size={36} fill="currentColor" className="opacity-80" />
+                  </div>
+                  <div className="space-y-2">
+                    <h5 className="font-black text-sm uppercase text-amber-400">Générateur d'Ondes Cérébrales</h5>
+                    <p className="text-xs opacity-60 leading-relaxed max-w-xs text-white/70">
+                      Libère la puissance cognitrice de ton cerveau ! Débloque nos ondes neuronales en temps réel (Alpha, Bêta, Thêta) assorties d'un filtre antibruit rose breveté de révisions profondes.
+                    </p>
+                  </div>
+                  <button
+                    onClick={onGoToSettings}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-500 text-black font-black text-xs uppercase tracking-widest shadow-xl cursor-pointer"
+                  >
+                    <Crown size={14} className="fill-black/15" /> DEVENIR PREMIUM (4.99$)
+                  </button>
+                </div>
+              ) : (
+                /* UNLOCKED ACTIVE GENERATOR */
+                <div className="space-y-6 mt-4">
+                  {/* Play Stop Widget */}
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${ambientPlaying ? 'bg-amber-400 animate-ping' : 'bg-white/20'}`} />
+                      <div>
+                        <p className="text-xs font-black">{ambientPlaying ? 'Générateur Actif' : 'Générateur en Veille'}</p>
+                        <p className="text-[10px] opacity-50">Fréquence porteuse harmonieuse</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (ambientPlaying) {
+                          stopSynthesizer();
+                        } else {
+                          startSynthesizer();
+                        }
+                      }}
+                      className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all ${ambientPlaying ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-amber-400 hover:scale-[1.02] active:scale-95 text-black'}`}
+                    >
+                      {ambientPlaying ? 'Arrêter 🛑' : 'Démarrer ⚡'}
+                    </button>
+                  </div>
+
+                  {/* Preset Presets buttons */}
+                  <div className="space-y-2">
+                    <span className="block text-[9px] font-black uppercase tracking-widest opacity-40">Ondes de synchronisation neuronale :</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'alpha', label: '🧘 Alpha', title: 'Relaxation & Mémoire' },
+                        { id: 'beta', label: '⚡ Beta', title: 'Focus & Logique' },
+                        { id: 'theta', label: '🌊 Theta', title: 'Rêve & Créativité' }
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleUpdatePreset(p.id as any)}
+                          className={`py-2 px-1 rounded-xl border text-center transition-all ${binauralPreset === p.id ? 'bg-amber-400/10 border-amber-400/40 text-amber-400' : 'bg-white/5 border-white/5 opacity-60 hover:opacity-100'}`}
+                          title={p.title}
+                        >
+                          <div className="text-xs font-black">{p.label}</div>
+                          <div className="text-[8px] font-medium opacity-50">{p.id === 'alpha' ? '10 Hz' : p.id === 'beta' ? '15 Hz' : '6 Hz'}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Audio tuning Sliders */}
+                  <div className="space-y-4 bg-black/30 p-4 rounded-3xl border border-white/5">
+                    <span className="block text-[9px] font-black uppercase tracking-widest opacity-45 flex items-center gap-1">
+                      <Sliders size={10} /> Ajustement des Fréquences Cognitives
+                    </span>
+                    
+                    <div className="space-y-3">
+                      {/* Master Slider */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold">
+                          <span className="opacity-60">🎚️ Volume Général</span>
+                          <span className="font-mono text-amber-400">{Math.round(masterVolume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={masterVolume}
+                          onChange={(e) => handleUpdateVolume('master', parseFloat(e.target.value))}
+                          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                        />
+                      </div>
+
+                      {/* Binaural Vol */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold">
+                          <span className="opacity-60">🧠 Volume Ondes</span>
+                          <span className="font-mono text-amber-400">{Math.round(binauralVolume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={binauralVolume}
+                          onChange={(e) => handleUpdateVolume('binaural', parseFloat(e.target.value))}
+                          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                        />
+                      </div>
+
+                      {/* Noise levels */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold">
+                          <span className="opacity-60">🌊 Bruit de Révision (Rain style)</span>
+                          <span className="font-mono text-amber-400">{Math.round(noiseVolume * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={noiseVolume}
+                          onChange={(e) => handleUpdateVolume('noise', parseFloat(e.target.value))}
+                          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                        />
+                      </div>
+
+                      {/* Solfeggio healing slider */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold">
+                          <span className="opacity-60">✨ Vibrations Harmonie (528 Hz)</span>
+                          <span className="font-mono text-[#fbbf24]">{Math.round(solfeggioVolume * 200)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="0.5"
+                          step="0.02"
+                          value={solfeggioVolume}
+                          onChange={(e) => handleUpdateVolume('solfeggio', parseFloat(e.target.value))}
+                          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pulsing visualizer */}
+                  {ambientPlaying && (
+                    <div className="flex justify-center items-center gap-1.5 py-2.5 h-8 bg-amber-400/5 rounded-2xl border border-amber-400/10">
+                      {[1, 2, 3, 4, 5, 4, 3, 2, 1].map((val, idx) => {
+                        const heights = ['h-3', 'h-5', 'h-2', 'h-6', 'h-4', 'h-5', 'h-3', 'h-4', 'h-2'];
+                        const timings = ['[animation-duration:0.6s]', '[animation-duration:0.4s]', '[animation-duration:0.8s]', '[animation-duration:0.5s]', '[animation-duration:0.7s]', '[animation-duration:0.3s]', '[animation-duration:0.9s]', '[animation-duration:0.6s]', '[animation-duration:0.4s]'];
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`w-1 ${heights[idx]} rounded bg-amber-400 animate-pulse ${timings[idx]}`} 
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
