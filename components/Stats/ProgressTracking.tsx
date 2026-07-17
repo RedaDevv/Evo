@@ -163,22 +163,22 @@ const ProgressTracking: React.FC<ProgressTrackingProps> = ({ tasks, theme, userD
       </div>
 
       <div className={`${currentTheme.card} rounded-3xl p-8 border ${currentTheme.accent} shadow-sm relative overflow-hidden`}>
-         {!isPremium && (
-           <div className="absolute inset-0 z-20 backdrop-blur-md bg-black/50 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
-             <div className="p-4 rounded-3xl bg-amber-500/10 text-amber-500 ring-2 ring-amber-500/20 mb-4 animate-bounce">
+          {!isPremium && (
+           <div className="absolute inset-0 z-20 backdrop-blur-md bg-black/60 flex flex-col items-center justify-center text-center p-6 animate-in fade-in duration-300">
+             <div className="p-4 rounded-3xl bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-4 animate-bounce">
                <Crown size={32} className="fill-amber-500/20" />
              </div>
-             <h4 className="text-xl font-black text-white tracking-tight flex items-center gap-1.5 mb-2">
-               Profil d'Épreuve Verrouillé 🔑
+             <h4 className="text-xl font-bold text-white tracking-tight flex items-center gap-1.5 mb-2">
+               Profil d'Évaluation Verrouillé 🔒
              </h4>
              <p className="text-xs text-white/70 max-w-md mb-6 font-medium leading-relaxed">
-               Passe Premium pour débloquer l'évaluation cognitive de ton Organisation, ta Discipline, ta Priorisation et ton Assiduité d'étudiant.
+               Passez au statut Premium pour afficher vos statistiques avancées : évaluation d'organisation, discipline, priorisation et assiduité.
              </p>
              <button
                onClick={onGoToSettings}
-               className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 text-black font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-2 hover:scale-[1.03] active:scale-95 transition-all cursor-pointer"
+               className="px-6 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-500 text-black font-bold text-xs uppercase tracking-wider shadow-lg flex items-center gap-2 hover:scale-[1.03] active:scale-95 transition-all cursor-pointer"
              >
-               DEVENIR PREMIUM ✨ <ArrowRight size={14} />
+               Devenir Premium <ArrowRight size={14} />
              </button>
            </div>
          )}

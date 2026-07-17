@@ -32,6 +32,7 @@ import AdminPanel from './components/AdminPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Mail, RefreshCw, LogOut as LogOutIcon, Settings as SettingsIcon, Shield } from 'lucide-react';
 import { handleSpotifyCallback } from './spotify';
+import { AdSenseAd } from './components/AdSenseAd';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -365,11 +366,19 @@ const App: React.FC = () => {
             userData={userData}
             onUpdateUserData={(updates) => currentUser && firebaseService.updateUserData(currentUser.id, updates)}
             onUpdateProfileName={(name) => firebaseService.updateProfileName(name)}
+            onLogout={handleLogout}
           />
         );
       case 'admin':
         if (currentUser?.email === 'reda.elhajji.43@gmail.com') {
-          return <AdminPanel theme={theme} currentUserEmail={currentUser.email} />;
+          return (
+            <AdminPanel 
+              theme={theme} 
+              currentUserEmail={currentUser.email} 
+              userData={userData}
+              onUpdateUserData={(updates) => currentUser && firebaseService.updateUserData(currentUser.id, updates)}
+            />
+          );
         }
         return null;
       default:
@@ -500,12 +509,21 @@ const App: React.FC = () => {
             <h1 className="text-3xl font-black tracking-tighter">Salut {currentUser.name} ! 👋</h1>
             <p className="opacity-50 text-sm font-bold uppercase tracking-wider">C'est le moment de briller.</p>
           </div>
-          <button 
-            onClick={() => setIsTaskModalOpen(true)}
-            className={`${currentTheme.button} px-6 py-4 rounded-[1.25rem] shadow-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all font-black text-sm`}
-          >
-            <Plus size={20} strokeWidth={3} /> <span className="hidden sm:inline">NOUVELLE TÂCHE</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsTaskModalOpen(true)}
+              className={`${currentTheme.button} px-6 py-4 rounded-[1.25rem] shadow-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all font-black text-sm cursor-pointer`}
+            >
+              <Plus size={20} strokeWidth={3} /> <span className="hidden sm:inline">NOUVELLE TÂCHE</span>
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="p-4 bg-white/5 hover:bg-red-500/10 text-white/70 hover:text-red-400 border border-white/10 rounded-[1.25rem] shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              title="Déconnexion"
+            >
+              <LogOut size={20} strokeWidth={2.5} />
+            </button>
+          </div>
         </header>
 
         <AnimatePresence mode="wait">
@@ -519,6 +537,14 @@ const App: React.FC = () => {
             {renderContent()}
           </motion.div>
         </AnimatePresence>
+
+        {activeTab !== 'settings' && activeTab !== 'admin' && (
+          <AdSenseAd 
+            theme={theme} 
+            userData={userData} 
+            onGoToSettings={() => setActiveTab('settings')} 
+          />
+        )}
 
         {isTaskModalOpen && (
           <TaskModal 

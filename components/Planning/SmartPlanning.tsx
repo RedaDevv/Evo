@@ -494,13 +494,13 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
         {!isPremium && (
           <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-md flex items-center justify-between px-6 animate-in fade-in duration-300">
             <span className="text-xs font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <Crown size={14} className="animate-pulse fill-amber-400/20" /> SYNCHRONISATION GOOGLE CALENDAR
+              <Crown size={14} className="animate-pulse fill-amber-400/20" /> Synchronisation Google Calendar
             </span>
             <button 
               onClick={onGoToSettings}
-              className="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 rounded-xl font-bold text-[10px] text-black tracking-wider uppercase hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="px-4 py-2 bg-amber-450 hover:bg-amber-500 rounded-xl font-bold text-[10px] text-black tracking-wider uppercase hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
-              Débloquer ✨
+              Débloquer Premium
             </button>
           </div>
         )}
@@ -536,10 +536,10 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
             <button
               onClick={handleConnectCalendar}
               disabled={isConnecting}
-              className={`px-5 py-3 rounded-xl font-black text-xs flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 text-white`}
+              className={`px-5 py-3 rounded-xl font-bold text-xs flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 text-white`}
             >
               {isConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link size={14} />}
-              LINK GOOGLE CALENDAR
+              Associer Google Calendar
             </button>
           )}
         </div>
@@ -552,13 +552,13 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
         
         <div className="relative z-10">
           <h2 className="text-3xl font-black mb-4 flex items-center gap-3">
-            <Sparkles className="text-[var(--primary)]" /> Planning Sur-Mesure
+            <Sparkles className="text-[var(--primary)]" /> Planning d'Études
           </h2>
           <p className="text-[var(--text)]/60 max-w-2xl mb-8">
-            Optimise ton emploi du temps d'études. Evo prend en compte tes <span className="font-bold text-[var(--text)]">{unavailabilities.length} indisponibilités directes</span> 
+            Optimisez votre temps de travail. L'outil prend en compte vos <span className="font-bold text-[var(--text)]">{unavailabilities.length} indisponibilités</span> 
             {gcalUnavailabilities.length > 0 && (
-              <span> et tes <span className="font-bold text-blue-500">{gcalUnavailabilities.length} événements Google Calendar</span></span>
-            )} pour te proposer un planning 100% réaliste d'études, avec ou sans IA !
+              <span> et vos <span className="font-bold text-blue-500">{gcalUnavailabilities.length} événements Google Calendar</span></span>
+            )} pour vous proposer un planning d'études structuré et réaliste.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
@@ -566,28 +566,28 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
               <button 
                 onClick={generatePlanning}
                 disabled={isLoading || tasks.filter(t => t.status !== TaskStatus.DONE).length === 0}
-                className={`${currentTheme.primary} text-white px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 flex-1`}
+                className={`${currentTheme.primary} text-white px-6 py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 shadow-lg hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 flex-1`}
               >
                 {isLoading ? <Loader2 className="animate-spin w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                GÉNÉRER AVEC L'IA (GEMINI)
+                Générer avec l'Assistant IA
               </button>
             ) : (
               <button 
                 onClick={onGoToSettings}
-                className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex-1 cursor-pointer"
+                className="bg-amber-400 hover:bg-amber-500 text-black px-6 py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex-1 cursor-pointer"
               >
                 <Crown className="w-4 h-4 fill-black/10" />
-                DÉBLOQUER L'IA GÉNÉTIQUE (PREMIUM ✨)
+                Activer l'Assistant Intelligent (Premium)
               </button>
             )}
 
             <button 
               onClick={generateDeterministicPlanning}
               disabled={isLoading || tasks.filter(t => t.status !== TaskStatus.DONE).length === 0}
-              className="bg-white/5 hover:bg-white/10 text-[var(--text)] border border-white/10 px-6 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2.5 shadow-lg transition-all disabled:opacity-50 active:scale-95 flex-1"
+              className="bg-white/5 hover:bg-white/10 text-[var(--text)] border border-white/10 px-6 py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2.5 shadow-lg transition-all disabled:opacity-50 active:scale-95 flex-1"
             >
               <Calendar className="w-4 h-4 text-[var(--primary)]" />
-              PLANNING DYNAMIQUE (ALGORITHMIQUE, HORS-IA)
+              Générer un Planning Classique
             </button>
           </div>
         </div>
@@ -663,8 +663,8 @@ const SmartPlanning: React.FC<SmartPlanningProps> = ({ tasks, unavailabilities, 
         ) : !isLoading && (
           <div className="col-span-full py-20 text-center text-[var(--text)]/40">
             {tasks.filter(t => t.status !== TaskStatus.DONE).length === 0 
-              ? "Ajoute des tâches pour voir l'IA à l'œuvre ! 📝"
-              : "Clique sur le bouton pour que l'IA contourne tes créneaux bloqués et Google Calendar."}
+              ? "Ajoutez des tâches pour planifier votre semaine d'études."
+              : "Générez un planning d'études optimisé selon vos contraintes d'agenda."}
           </div>
         )}
       </div>

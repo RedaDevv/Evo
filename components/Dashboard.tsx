@@ -97,7 +97,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <h3 className="text-2xl font-black flex items-center gap-3 tracking-tight">
                 <Clock3 className={currentTheme.secondary} size={28} /> Mon Temps Bloqué
               </h3>
-              <span className="text-[10px] font-black opacity-30 bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">Zone IA Off</span>
+              <span className="text-[10px] font-black opacity-30 bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">Contraintes locales</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -160,13 +160,13 @@ const Dashboard: React.FC<DashboardProps> = ({
               }
             }} className="space-y-5">
               <input name="taskTitle" type="text" placeholder="Une idée ? Note-la !" className="w-full bg-white/5 border-none rounded-2xl px-6 py-5 text-sm font-bold focus:ring-4 ring-white/5 outline-none transition-all" />
-              <button className={`w-full ${currentTheme.button} font-black py-5 rounded-2xl shadow-2xl uppercase text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all`}>
-                AJOUTER À MA LISTE
+              <button className={`w-full ${currentTheme.button} font-bold py-5 rounded-2xl shadow-2xl uppercase text-xs tracking-wider hover:scale-[1.02] active:scale-95 transition-all`}>
+                Ajouter à ma liste
               </button>
             </form>
           </div>
           <div className={`${currentTheme.card} rounded-[2.5rem] p-8 border ${currentTheme.accent} shadow-2xl shadow-black/5 transition-all duration-700 border-l-8 border-l-[var(--primary)]`}>
-            <h3 className="font-black text-lg mb-3 flex items-center gap-2 tracking-tight">🤖 EVO COACH</h3>
+            <h3 className="font-bold text-lg mb-3 flex items-center gap-2 tracking-tight">Conseil d'Evo</h3>
             <p className="text-sm opacity-60 leading-relaxed italic font-bold">
               "Le succès n'est pas un sprint, c'est une suite de petites habitudes. Bloque tes heures de sommeil, c'est ta priorité n°1."
             </p>

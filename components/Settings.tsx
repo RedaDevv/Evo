@@ -2,9 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeType, UserData, NotificationSettings, DisplayMode } from '../types';
 import { THEMES } from '../constants';
-import { Settings as SettingsIcon, Palette, Shield, Bell, User, Save, BellRing, Check, X, Monitor, Smartphone, Music, Plus, Trash2, Crown } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Shield, Bell, User, Save, BellRing, Check, X, Monitor, Smartphone, Music, Plus, Trash2, Crown, Scale, LogOut } from 'lucide-react';
 import { notificationService } from '../services/notificationService';
 import { PayPalPremium } from './PayPalPremium';
+import { LegalModal } from './Auth/LegalModal';
+import { AnimatePresence } from 'framer-motion';
 
 interface SettingsProps {
   theme: ThemeType;
@@ -12,6 +14,7 @@ interface SettingsProps {
   userData: Partial<UserData>;
   onUpdateUserData: (updates: Partial<UserData>) => void;
   onUpdateProfileName: (name: string) => Promise<void>;
+  onLogout: () => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
@@ -19,12 +22,14 @@ const Settings: React.FC<SettingsProps> = ({
   onThemeChange, 
   userData, 
   onUpdateUserData,
-  onUpdateProfileName
+  onUpdateProfileName,
+  onLogout
 }) => {
   const currentTheme = THEMES[theme];
   const [newName, setNewName] = useState(userData.name || '');
   const [isSavingName, setIsSavingName] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [legalModalType, setLegalModalType] = useState<'privacy' | 'terms' | null>(null);
 
   // Spotify custom suggestions state and handlers
   const defaultPlaylists = [
@@ -511,6 +516,78 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </div>
       </section>
+
+      {/* CONFIDENTIALITY & LEGAL SECTION */}
+      <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border ${currentTheme.accent} space-y-6 shadow-xl`}>
+        <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+          <div className="p-3 rounded-xl bg-white/5 text-[var(--primary)]">
+            <Shield size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black tracking-tight">Confidentialité & Documents Légaux</h3>
+            <p className="text-xs font-bold opacity-50 uppercase tracking-wider">Gérez vos droits, lisez nos chartes et conditions d'utilisation</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-white/60 leading-relaxed font-medium">
+          Evo protège vos données. Nous chiffrons vos tâches, votre calendrier d'indisponibilités et vos préférences. Conformément au Règlement Général sur la Protection des Données (RGPD), vos données ne sont jamais vendues et vous pouvez demander la suppression immédiate de votre compte par courriel ou nous demander des renseignements.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => setLegalModalType('privacy')}
+            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs font-bold uppercase text-white tracking-wider cursor-pointer"
+          >
+            <Shield size={14} className="text-emerald-400" /> Politique de Confidentialité
+          </button>
+          <button
+            type="button"
+            onClick={() => setLegalModalType('terms')}
+            className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs font-bold uppercase text-white tracking-wider cursor-pointer"
+          >
+            <Scale size={14} className="text-blue-400" /> Conditions d'Utilisation (CGU)
+          </button>
+        </div>
+      </section>
+
+      {/* CONFIDENTIALITY & DECONNEXION SECTION */}
+      <section className={`${currentTheme.card} p-8 rounded-[2.5rem] border border-red-500/10 space-y-6 shadow-xl bg-red-950/5`}>
+        <div className="flex items-center gap-4 border-b border-red-500/10 pb-4">
+          <div className="p-3 rounded-xl bg-red-500/10 text-red-400">
+            <LogOut size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black tracking-tight text-red-400">Déconnexion</h3>
+            <p className="text-xs font-bold opacity-50 uppercase tracking-wider text-red-500/70">Fermer votre session active sur cet appareil</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-white/50 leading-relaxed font-medium">
+          Vous pouvez vous déconnecter à tout moment. Vos données restent synchronisées et sécurisées dans le cloud pour votre prochaine connexion.
+        </p>
+
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-red-500 hover:bg-red-600 active:scale-95 transition-all text-xs font-black uppercase text-black tracking-wider cursor-pointer shadow-lg shadow-red-500/10"
+          >
+            <LogOut size={16} /> Me Déconnecter
+          </button>
+        </div>
+      </section>
+
+      {/* Legal Modals */}
+      <AnimatePresence>
+        {legalModalType && (
+          <LegalModal
+            isOpen={!!legalModalType}
+            onClose={() => setLegalModalType(null)}
+            type={legalModalType}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

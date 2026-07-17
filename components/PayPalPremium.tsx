@@ -261,7 +261,7 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
                 </span>
               )}
             </h3>
-            <p className="text-xs opacity-50 font-bold uppercase tracking-wider mt-0.5">Offre-toi les super-pouvoirs de la réussite universitaire</p>
+            <p className="text-xs opacity-50 font-bold uppercase tracking-wider mt-0.5">Accédez à l'ensemble des outils de réussite universitaire</p>
           </div>
         </div>
 
@@ -285,7 +285,7 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
                 <Sparkles size={24} />
               </div>
               <div>
-                <h4 className="text-lg font-black text-amber-400">Te voilà Membre d'Élite !</h4>
+                <h4 className="text-lg font-black text-amber-400">Vous êtes membre Premium</h4>
                 <p className="text-xs opacity-60 font-medium">Vous bénéficiez de toutes les fonctionnalités de manière illimitée.</p>
                 {premiumSinceDate && (
                   <p className="text-[10px] opacity-40 font-bold flex items-center gap-1.5 mt-2">
@@ -310,22 +310,22 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
               <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 w-fit">
                 <Calendar size={18} />
               </div>
-              <h5 className="font-bold text-sm">Planification Génétique IA</h5>
-              <p className="text-xs opacity-50 leading-relaxed font-medium">L'IA réorganise tes journées automatiquement selon tes imprévus, sans conflits d'horaires.</p>
+              <h5 className="font-bold text-sm">Planification IA</h5>
+              <p className="text-xs opacity-50 leading-relaxed font-medium">L'IA réorganise vos journées automatiquement selon vos imprévus, sans conflits d'horaires.</p>
             </div>
             <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
               <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 w-fit">
                 <Music size={18} />
               </div>
-              <h5 className="font-bold text-sm">Intégration Playlists Illimitée</h5>
-              <p className="text-xs opacity-50 leading-relaxed font-medium">Configure jusqu'à 8 playlists Spotify personnalisées qui restent sauvegardées de manière permanente.</p>
+              <h5 className="font-bold text-sm">Suggestions de Playlists</h5>
+              <p className="text-xs opacity-50 leading-relaxed font-medium">Configurez vos suggestions de playlists Spotify et sauvegardez-les de manière permanente.</p>
             </div>
             <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
               <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400 w-fit">
                 <Layers size={18} />
               </div>
-              <h5 className="font-bold text-sm">Ambiance Cognitive</h5>
-              <p className="text-xs opacity-50 leading-relaxed font-medium">Débloque l'accès aux thèmes exclusifs (Midnight, Neon, Emerald) et aux notifications système intelligentes.</p>
+              <h5 className="font-bold text-sm">Ambiance de Travail</h5>
+              <p className="text-xs opacity-50 leading-relaxed font-medium">Accédez aux thèmes exclusifs (Midnight, Neon, Emerald) et aux notifications système intelligentes.</p>
             </div>
           </div>
         </div>
@@ -335,21 +335,21 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
           
           {/* AVANTAGES LIST */}
           <div className="lg:col-span-7 space-y-6">
-            <h4 className="text-lg font-black tracking-tight">Ce qui est inclus dans le Plan Premium :</h4>
+            <h4 className="text-lg font-bold tracking-tight">Inclus dans la formule Premium :</h4>
             
             <div className="grid grid-cols-1 gap-4">
               {[
-                { title: "Planification Intelligente IA sans restriction", desc: "Algorithme génétique d'organisation des études de haut niveau. Calcule les créneaux parfaits.", color: "text-amber-500 bg-amber-500/10", icon: Zap },
-                { title: "Sauvegarde éternelle des suggestions de playlists", desc: "Ajoutez vos liens Spotify préférés dans vos réglages, ils restent sauvegardés dans le Cloud à chaque connexion.", color: "text-emerald-500 bg-emerald-500/10", icon: Music },
-                { title: "Statistiques d'apprentissage ultra développées", desc: "Analyse avancée de tes heures passées, ratios d'efficience d'Eisenhower, répartition par matières.", color: "text-sky-400 bg-sky-400/10", icon: BarChart3 },
-                { title: "Zéro Publicité & Thèmes de Productivité d'Elite", desc: "Personnalise EVO Study avec nos thèmes exclusifs à haut rendement cognitif et profite d'une interface épurée.", color: "text-indigo-400 bg-indigo-400/10", icon: Layers }
+                { title: "Planification Intelligente par IA", desc: "Algorithme intelligent de calcul de vos créneaux d'études optimaux.", color: "text-amber-500 bg-amber-500/10", icon: Zap },
+                { title: "Sauvegarde permanente des playlists", desc: "Enregistrez vos suggestions Spotify préférées dans le Cloud pour les retrouver à chaque connexion.", color: "text-emerald-500 bg-emerald-500/10", icon: Music },
+                { title: "Statistiques d'apprentissage avancées", desc: "Suivez précisément vos heures de travail, l'efficience de vos sessions et la répartition de vos efforts.", color: "text-sky-400 bg-sky-400/10", icon: BarChart3 },
+                { title: "Zéro Publicité & Thèmes de Productivité", desc: "Personnalisez votre espace avec nos thèmes exclusifs et profitez d'une interface entièrement épurée.", color: "text-indigo-400 bg-indigo-400/10", icon: Layers }
               ].map((av, index) => (
                 <div key={index} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
                   <div className={`p-2.5 h-10 w-10 shrink-0 rounded-xl flex items-center justify-center ${av.color} group-hover:scale-110 transition-all`}>
                     <av.icon size={20} />
                   </div>
                   <div>
-                    <h5 className="text-sm font-black flex items-center gap-1.5">{av.title}</h5>
+                    <h5 className="text-sm font-bold flex items-center gap-1.5">{av.title}</h5>
                     <p className="text-xs opacity-50 mt-1 leading-relaxed font-medium">{av.desc}</p>
                   </div>
                 </div>

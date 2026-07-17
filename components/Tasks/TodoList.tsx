@@ -81,10 +81,10 @@ const TodoList: React.FC<TodoListProps> = ({ tasks, onUpdateTask, onDeleteTask, 
                   </span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded ${
-                    task.quadrant === 'do_first' ? 'bg-red-100 text-red-600' : 
-                    task.quadrant === 'schedule' ? 'bg-blue-100 text-blue-600' : 
-                    'bg-white/10 text-[var(--text)]/60'
+                  <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-full border ${
+                    task.quadrant === 'do_first' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 
+                    task.quadrant === 'schedule' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
+                    'bg-white/5 text-[var(--text)]/60 border-white/5'
                   }`}>
                     {task.quadrant.replace('_', ' ')}
                   </span>

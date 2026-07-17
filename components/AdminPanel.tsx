@@ -3,10 +3,13 @@ import { ThemeType, UserData } from '../types';
 import { THEMES } from '../constants';
 import { firebaseService } from '../services/firebaseService';
 import { Shield, User as UserIcon, Crown, Search, RefreshCw, CheckCircle2, AlertCircle, Sparkles, LogIn } from 'lucide-react';
+import { AdSenseGuide } from './AdSenseGuide';
 
 interface AdminPanelProps {
   theme: ThemeType;
   currentUserEmail?: string;
+  userData: Partial<UserData>;
+  onUpdateUserData: (updates: Partial<UserData>) => void;
 }
 
 interface UserProfile {
@@ -18,7 +21,7 @@ interface UserProfile {
   role?: string;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ theme, currentUserEmail }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ theme, currentUserEmail, userData, onUpdateUserData }) => {
   const currentTheme = THEMES[theme];
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -311,6 +314,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ theme, currentUserEmail }) => {
           </div>
         )}
       </div>
+
+      {/* AdSense Guide - Admin only */}
+      <AdSenseGuide 
+        theme={theme} 
+        userData={userData} 
+        onUpdateUserData={onUpdateUserData} 
+      />
     </div>
   );
 };

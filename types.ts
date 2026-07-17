@@ -96,6 +96,9 @@ export interface UserData {
   lastUsedPlaylist?: string;
   isPremium?: boolean;
   premiumSince?: any;
+  adsensePublisherId?: string;
+  adsenseSlotId?: string;
+  adsenseEnabled?: boolean;
 }
 
 export interface AppState {

@@ -576,10 +576,10 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
             <button
               type="button"
               onClick={() => setActiveCompanionMode('binaural')}
-              className={`flex-1 py-2.5 text-center text-[10.5px] font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${activeCompanionMode === 'binaural' ? 'bg-amber-400 text-black font-black shadow-md' : 'opacity-60 hover:opacity-100'}`}
+              className={`flex-1 py-2.5 text-center text-[10.5px] font-bold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 ${activeCompanionMode === 'binaural' ? 'bg-amber-400 text-black shadow-md' : 'opacity-60 hover:opacity-100'}`}
             >
               <Brain size={13} className={activeCompanionMode === 'binaural' ? 'fill-black/10' : ''} />
-              Ondes Neuro-Focus
+              Ondes Binaurales
             </button>
           </div>
 
@@ -930,37 +930,17 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                     <Brain size={22} className={ambientPlaying ? "animate-pulse text-amber-400" : "text-amber-500/40"} />
                   </div>
                   <div>
-                    <h4 className="font-black text-lg tracking-tight">Ondes Élite</h4>
-                    <p className="text-[10px] uppercase font-bold opacity-45 tracking-wider">Synchroniseur de Cerveau</p>
+                    <h4 className="font-bold text-lg tracking-tight">Ondes Binaurales</h4>
+                    <p className="text-[10px] uppercase font-bold opacity-45 tracking-wider">Atmosphères de Concentration</p>
                   </div>
                 </div>
-                <span className="text-[9px] font-black bg-gradient-to-r from-amber-400 to-amber-600 text-black px-2 py-0.5 rounded shadow-sm">
-                  PREMIUM ✨
+                <span className="text-[9px] font-bold border border-amber-400/30 text-amber-400 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles size={10} className="fill-amber-400/20" /> Inclus
                 </span>
               </div>
 
-              {!userData.isPremium ? (
-                /* LOCKED PREMIUM BLOCK */
-                <div className="flex flex-col items-center justify-center text-center py-12 px-2 space-y-6">
-                  <div className="w-20 h-20 bg-amber-500/5 rounded-full border border-amber-500/20 flex items-center justify-center text-amber-400 animate-pulse">
-                    <Crown size={36} fill="currentColor" className="opacity-80" />
-                  </div>
-                  <div className="space-y-2">
-                    <h5 className="font-black text-sm uppercase text-amber-400">Générateur d'Ondes Cérébrales</h5>
-                    <p className="text-xs opacity-60 leading-relaxed max-w-xs text-white/70">
-                      Libère la puissance cognitrice de ton cerveau ! Débloque nos ondes neuronales en temps réel (Alpha, Bêta, Thêta) assorties d'un filtre antibruit rose breveté de révisions profondes.
-                    </p>
-                  </div>
-                  <button
-                    onClick={onGoToSettings}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-500 text-black font-black text-xs uppercase tracking-widest shadow-xl cursor-pointer"
-                  >
-                    <Crown size={14} className="fill-black/15" /> DEVENIR PREMIUM (4.99$)
-                  </button>
-                </div>
-              ) : (
-                /* UNLOCKED ACTIVE GENERATOR */
-                <div className="space-y-6 mt-4">
+              {/* UNLOCKED ACTIVE GENERATOR */}
+              <div className="space-y-6 mt-4">
                   {/* Play Stop Widget */}
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -990,9 +970,9 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                     <span className="block text-[9px] font-black uppercase tracking-widest opacity-40">Ondes de synchronisation neuronale :</span>
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { id: 'alpha', label: '🧘 Alpha', title: 'Relaxation & Mémoire' },
-                        { id: 'beta', label: '⚡ Beta', title: 'Focus & Logique' },
-                        { id: 'theta', label: '🌊 Theta', title: 'Rêve & Créativité' }
+                        { id: 'alpha', label: '🧘 Alpha', title: 'Détente & Assimilation' },
+                        { id: 'beta', label: '⚡ Bêta', title: 'Concentration Active' },
+                        { id: 'theta', label: '🌊 Thêta', title: 'Créativité' }
                       ].map((p) => (
                         <button
                           key={p.id}
@@ -1010,8 +990,8 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
 
                   {/* Audio tuning Sliders */}
                   <div className="space-y-4 bg-black/30 p-4 rounded-3xl border border-white/5">
-                    <span className="block text-[9px] font-black uppercase tracking-widest opacity-45 flex items-center gap-1">
-                      <Sliders size={10} /> Ajustement des Fréquences Cognitives
+                    <span className="block text-[9px] font-bold uppercase tracking-widest opacity-45 flex items-center gap-1">
+                      <Sliders size={10} /> Réglage de l'Espace Sonore
                     </span>
                     
                     <div className="space-y-3">
@@ -1052,7 +1032,7 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                       {/* Noise levels */}
                       <div className="space-y-1">
                         <div className="flex justify-between text-[10px] font-bold">
-                          <span className="opacity-60">🌊 Bruit de Révision (Rain style)</span>
+                          <span className="opacity-60">🌊 Bruit Rose (Effet Pluie)</span>
                           <span className="font-mono text-amber-400">{Math.round(noiseVolume * 100)}%</span>
                         </div>
                         <input
@@ -1069,7 +1049,7 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                       {/* Solfeggio healing slider */}
                       <div className="space-y-1">
                         <div className="flex justify-between text-[10px] font-bold">
-                          <span className="opacity-60">✨ Vibrations Harmonie (528 Hz)</span>
+                          <span className="opacity-60">✨ Fréquence Harmonique (528 Hz)</span>
                           <span className="font-mono text-[#fbbf24]">{Math.round(solfeggioVolume * 200)}%</span>
                         </div>
                         <input
@@ -1101,7 +1081,6 @@ const Pomodoro: React.FC<PomodoroProps> = ({ theme, tasks, onUpdateTask, userDat
                     </div>
                   )}
                 </div>
-              )}
             </>
           )}
         </div>
