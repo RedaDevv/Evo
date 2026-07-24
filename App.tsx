@@ -313,6 +313,13 @@ const App: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setIsEmailVerified(true)}
+              className="w-full bg-amber-400/10 hover:bg-amber-400/20 text-amber-400 border border-amber-400/20 py-4 rounded-2xl font-black text-xs uppercase tracking-wider transition-all active:scale-95"
+            >
+              Passer l'étape (Mode Démo / Test)
+            </button>
+
+            <button
               onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 py-4 text-xs font-black text-red-400 hover:text-red-500 transition-all uppercase tracking-widest"
             >
@@ -412,55 +419,53 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className={`min-h-screen flex flex-col ${!isPhoneMode ? 'md:flex-row' : ''} ${currentTheme.bg} ${currentTheme.text} transition-all duration-500`}>
-      <aside className={`${isPhoneMode ? 'hidden' : 'hidden md:flex'} flex-col w-64 ${currentTheme.card} border-r ${currentTheme.accent} h-screen sticky top-0 transition-all duration-500 shadow-2xl shadow-black/5`}>
-        <div className="p-8 flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-2xl ${currentTheme.primary} flex items-center justify-center text-white shadow-xl shadow-primary/20`}>
-            <BarChart3 size={28} />
+      <aside className={`${isPhoneMode ? 'hidden' : 'hidden md:flex'} flex-col w-64 ${currentTheme.card} border-r border-white/10 h-screen sticky top-0 transition-all duration-500`}>
+        <div className="p-6 flex items-center gap-3 border-b border-white/10">
+          <div className="w-9 h-9 rounded-lg border border-white/20 bg-white/10 flex items-center justify-center text-white">
+            <BarChart3 size={20} />
           </div>
-          <span className="text-3xl font-black tracking-tighter">Evo</span>
+          <span className="font-serif text-2xl font-normal tracking-tight text-white">Evo</span>
         </div>
         
-        <div className="px-6 mb-4">
-          <div className="bg-white/5 p-4 rounded-2xl flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full ${currentTheme.primary} flex items-center justify-center text-black font-black text-sm`}>
+        <div className="px-4 py-4 border-b border-white/10 mb-2">
+          <div className="bg-white/[0.03] p-3 rounded-lg border border-white/10 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white font-serif font-bold text-sm shrink-0">
               {currentUser.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
               <div className="flex items-center gap-1.5 min-w-0">
-                <p className="text-xs font-black truncate">{currentUser.name}</p>
+                <p className="text-xs font-semibold truncate text-white">{currentUser.name}</p>
                 {userData?.isPremium && (
-                  <span className="shrink-0 text-[8px] font-black bg-gradient-to-r from-amber-400 to-amber-600 text-black px-1.5 py-0.5 rounded shadow-sm">
+                  <span className="shrink-0 text-[8px] font-mono font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-1.5 py-0.5 rounded-md">
                     PREMIUM ✨
                   </span>
                 )}
               </div>
-              <p className="text-[10px] opacity-40 font-bold truncate">{currentUser.email}</p>
+              <p className="text-[10px] opacity-50 font-mono truncate">{currentUser.email}</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-3 space-y-1.5">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
-            const isDarkText = theme === 'midnight' || theme === 'neon';
-            const activeTextColor = isDarkText ? 'text-black' : 'text-white';
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className="relative w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all duration-200 active:scale-[0.98] group overflow-hidden cursor-pointer"
+                className="relative w-full flex items-center gap-4 px-4 py-3.5 rounded-lg transition-all duration-150 active:scale-[0.98] group overflow-hidden cursor-pointer"
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeNavigationPill"
-                    className={`absolute inset-0 rounded-2xl ${currentTheme.button} shadow-lg`}
+                    className="absolute inset-0 rounded-lg bg-white/10 border border-white/20"
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
-                <span className={`relative z-10 flex items-center gap-3 text-sm font-bold ${
-                  isActive ? `${activeTextColor}` : 'opacity-60 hover:opacity-100'
+                <span className={`relative z-10 flex items-center gap-4 text-xs uppercase tracking-wider font-medium ${
+                  isActive ? 'text-white font-semibold' : 'opacity-60 hover:opacity-100 text-white'
                 }`}>
-                  <item.icon size={22} />
+                  <item.icon size={18} />
                   <span>{item.label}</span>
                 </span>
               </button>
@@ -468,17 +473,17 @@ const App: React.FC = () => {
           })}
         </nav>
 
-        <div className="p-6 border-t border-white/5 space-y-6">
+        <div className="p-4 border-t border-white/10">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-black text-red-400 hover:bg-red-500/10 transition-all uppercase tracking-widest cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-all uppercase tracking-wider cursor-pointer"
           >
-            <LogOut size={16} /> Déconnexion
+            <LogOut size={15} /> Déconnexion
           </button>
         </div>
       </aside>
 
-      <nav className={`${isPhoneMode ? 'flex' : 'md:hidden'} fixed bottom-0 left-0 right-0 z-50 ${currentTheme.card} border-t ${currentTheme.accent} px-2 py-3 flex justify-around shadow-2xl`}>
+      <nav className={`${isPhoneMode ? 'flex' : 'md:hidden'} fixed bottom-0 left-0 right-0 z-50 ${currentTheme.card} border-t border-white/10 px-2 py-2.5 flex justify-around`}>
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -487,14 +492,14 @@ const App: React.FC = () => {
               onClick={() => setActiveTab(item.id)} 
               className="relative flex flex-col items-center gap-1 p-2 min-w-[50px] transition-all cursor-pointer"
             >
-              <item.icon size={20} className={`relative z-10 transition-colors duration-200 ${isActive ? currentTheme.secondary : 'opacity-45'}`} />
-              <span className={`text-[10px] font-bold relative z-10 transition-colors duration-200 ${isActive ? currentTheme.secondary : 'opacity-45'}`}>
+              <item.icon size={18} className={`relative z-10 transition-colors duration-200 ${isActive ? 'text-white' : 'opacity-40'}`} />
+              <span className={`text-[10px] font-mono tracking-wider relative z-10 transition-colors duration-200 ${isActive ? 'text-white font-semibold' : 'opacity-40'}`}>
                 {item.label}
               </span>
               {isActive && (
                 <motion.div
                   layoutId="activeMobileDot"
-                  className={`absolute bottom-0 w-1.5 h-1.5 rounded-full ${currentTheme.primary}`}
+                  className="absolute bottom-0 w-1.5 h-1.5 rounded-full bg-white"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
@@ -503,25 +508,25 @@ const App: React.FC = () => {
         })}
       </nav>
 
-      <main className={`flex-1 ${isPhoneMode ? 'p-4 pb-24' : 'p-4 md:p-10 pb-24 md:pb-10'} max-w-7xl mx-auto w-full transition-all duration-500`}>
-        <header className="flex justify-between items-center mb-10">
+      <main className={`flex-1 ${isPhoneMode ? 'p-4 pb-24' : 'p-4 md:p-8 pb-24 md:pb-8'} max-w-7xl mx-auto w-full transition-all duration-300`}>
+        <header className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
           <div>
-            <h1 className="text-3xl font-black tracking-tighter">Salut {currentUser.name} ! 👋</h1>
-            <p className="opacity-50 text-sm font-bold uppercase tracking-wider">C'est le moment de briller.</p>
+            <h1 className="font-serif text-3xl font-normal tracking-tight text-white">Salut {currentUser.name} ! 👋</h1>
+            <p className="opacity-50 text-xs font-mono uppercase tracking-widest mt-1">C'est le moment de briller.</p>
           </div>
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsTaskModalOpen(true)}
-              className={`${currentTheme.button} px-6 py-4 rounded-[1.25rem] shadow-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all font-black text-sm cursor-pointer`}
+              className="px-5 py-3 rounded-lg border border-white/20 bg-white/10 hover:bg-white/15 text-white flex items-center gap-2 font-semibold text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
             >
-              <Plus size={20} strokeWidth={3} /> <span className="hidden sm:inline">NOUVELLE TÂCHE</span>
+              <Plus size={18} strokeWidth={2.5} /> <span className="hidden sm:inline">NOUVELLE TÂCHE</span>
             </button>
             <button 
               onClick={handleLogout}
-              className="p-4 bg-white/5 hover:bg-red-500/10 text-white/70 hover:text-red-400 border border-white/10 rounded-[1.25rem] shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              className="p-3 bg-white/5 hover:bg-red-500/10 text-white/70 hover:text-red-400 border border-white/10 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer"
               title="Déconnexion"
             >
-              <LogOut size={20} strokeWidth={2.5} />
+              <LogOut size={18} strokeWidth={2} />
             </button>
           </div>
         </header>

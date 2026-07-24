@@ -231,6 +231,38 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
     }
   };
 
+  // Fonction d'activation directe (Bypass / Démo)
+  const handleDirectActivation = async () => {
+    setIsProcessing(true);
+    setPaymentStatus(null);
+    try {
+      const userId = auth.currentUser?.uid;
+      if (userId) {
+        await firebaseService.updateUserData(userId, {
+          isPremium: true,
+          premiumSince: Date.now()
+        });
+      }
+      onUpdateUserData({
+        isPremium: true,
+        premiumSince: Date.now()
+      });
+      setPaymentStatus({
+        success: true,
+        message: "Félicitations ! Votre compte EVO study est désormais Premium ! ✨"
+      });
+      setSdkError(null);
+    } catch (err: any) {
+      console.error("Erreur d'activation directe :", err);
+      setPaymentStatus({
+        success: false,
+        message: `Erreur : ${err.message || "Impossible d'activer le compte."}`
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Charger le SDK au montage et quand l'ID change ou que isPremium change
   useEffect(() => {
     if (!isPremium) {
@@ -242,53 +274,53 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
   }, [paypalClientId, isPremium]);
 
   return (
-    <div className={`p-8 rounded-[2.5rem] border ${currentTheme.accent} ${currentTheme.card} shadow-xl overflow-hidden relative`}>
+    <div className={`p-6 md:p-8 rounded-lg border ${currentTheme.accent} ${currentTheme.card} overflow-hidden relative`}>
       {/* Background Decorative Sparkles */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary)]/5 rounded-full filter blur-3xl pointer-events-none -mr-20 -mt-20" />
       
       {/* 1. HEADER DU PLAN PREMIUM */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/5 relative z-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/10 relative z-10">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 ring-2 ring-amber-500/20 animate-pulse">
-            <Crown size={28} className="fill-amber-500/20" />
+          <div className="p-3 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            <Crown size={26} className="fill-amber-500/20" />
           </div>
           <div>
-            <h3 className="text-2xl font-black tracking-tight flex items-center gap-2">
+            <h3 className="font-serif text-2xl font-normal tracking-tight flex items-center gap-2 text-white">
               Plan EVO study Premium
               {isPremium && (
-                <span className="text-xs font-black bg-gradient-to-r from-amber-400 to-amber-600 text-black px-2.5 py-1 rounded-full uppercase tracking-wider animate-bounce">
+                <span className="text-xs font-mono font-semibold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
                   Actif ✨
                 </span>
               )}
             </h3>
-            <p className="text-xs opacity-50 font-bold uppercase tracking-wider mt-0.5">Accédez à l'ensemble des outils de réussite universitaire</p>
+            <p className="text-xs opacity-50 font-mono uppercase tracking-wider mt-0.5">Accédez à l'ensemble des outils de réussite universitaire</p>
           </div>
         </div>
 
         {!isPremium && (
           <div className="text-left md:text-right">
             <div className="flex items-baseline gap-2 md:justify-end">
-              <span className="text-xs opacity-40 line-through font-bold">14.99 USD</span>
-              <span className="text-3xl font-black text-amber-400 font-mono">{FIXED_PRICE} USD</span>
+              <span className="text-xs opacity-40 line-through font-mono">14.99 USD</span>
+              <span className="text-3xl font-serif text-amber-300 font-normal">{FIXED_PRICE} USD</span>
             </div>
-            <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mt-0.5">Abonnement unique • Accès à vie</p>
+            <p className="text-[10px] font-mono opacity-50 uppercase tracking-widest mt-0.5">Abonnement unique • Accès à vie</p>
           </div>
         )}
       </div>
 
       {/* 2. ÉTAT DU COMPTE : PREMIUM ACTIF */}
       {isPremium ? (
-        <div className="mt-8 space-y-6 relative z-10 animate-in zoom-in-95 duration-500">
-          <div className="p-6 rounded-3xl bg-amber-500/5 border border-amber-500/20 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="mt-8 space-y-6 relative z-10">
+          <div className="p-6 rounded-lg bg-amber-500/10 border border-amber-500/20 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400">
+              <div className="p-3 rounded-lg bg-amber-500/10 text-amber-300">
                 <Sparkles size={24} />
               </div>
               <div>
-                <h4 className="text-lg font-black text-amber-400">Vous êtes membre Premium</h4>
-                <p className="text-xs opacity-60 font-medium">Vous bénéficiez de toutes les fonctionnalités de manière illimitée.</p>
+                <h4 className="text-base font-semibold text-amber-300">Vous êtes membre Premium</h4>
+                <p className="text-xs opacity-70 font-sans mt-0.5">Vous bénéficiez de toutes les fonctionnalités de manière illimitée.</p>
                 {premiumSinceDate && (
-                  <p className="text-[10px] opacity-40 font-bold flex items-center gap-1.5 mt-2">
+                  <p className="text-[10px] opacity-50 font-mono flex items-center gap-1.5 mt-2">
                     <Clock size={12} /> Premium depuis le {premiumSinceDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 )}
@@ -298,7 +330,7 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
             <button 
               onClick={cancelPremiumStatus}
               disabled={isProcessing}
-              className="px-5 py-3 rounded-xl bg-white/5 hover:bg-red-500/10 border border-white/5 hover:border-red-500/20 text-red-400 hover:text-red-300 font-bold text-xs transition-all uppercase tracking-wider"
+              className="px-4 py-2.5 rounded-lg bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 text-red-400 hover:text-red-300 font-mono text-xs transition-all uppercase tracking-wider cursor-pointer"
             >
               Réinitialiser le statut (DÉMO)
             </button>
@@ -306,26 +338,26 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
 
           {/* Liste des modules débloqués */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-              <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 w-fit">
+            <div className="p-5 rounded-lg bg-white/5 border border-white/10 space-y-2">
+              <div className="p-2 rounded-md bg-sky-500/10 border border-sky-500/20 text-sky-400 w-fit">
                 <Calendar size={18} />
               </div>
-              <h5 className="font-bold text-sm">Planification IA</h5>
-              <p className="text-xs opacity-50 leading-relaxed font-medium">L'IA réorganise vos journées automatiquement selon vos imprévus, sans conflits d'horaires.</p>
+              <h5 className="font-semibold text-sm text-white">Planification IA</h5>
+              <p className="text-xs opacity-60 leading-relaxed font-sans">L'IA réorganise vos journées automatiquement selon vos imprévus.</p>
             </div>
-            <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 w-fit">
+            <div className="p-5 rounded-lg bg-white/5 border border-white/10 space-y-2">
+              <div className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 w-fit">
                 <Music size={18} />
               </div>
-              <h5 className="font-bold text-sm">Suggestions de Playlists</h5>
-              <p className="text-xs opacity-50 leading-relaxed font-medium">Configurez vos suggestions de playlists Spotify et sauvegardez-les de manière permanente.</p>
+              <h5 className="font-semibold text-sm text-white">Suggestions de Playlists</h5>
+              <p className="text-xs opacity-60 leading-relaxed font-sans">Configurez vos suggestions de playlists Spotify et sauvegardez-les.</p>
             </div>
-            <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-              <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400 w-fit">
+            <div className="p-5 rounded-lg bg-white/5 border border-white/10 space-y-2">
+              <div className="p-2 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-400 w-fit">
                 <Layers size={18} />
               </div>
-              <h5 className="font-bold text-sm">Ambiance de Travail</h5>
-              <p className="text-xs opacity-50 leading-relaxed font-medium">Accédez aux thèmes exclusifs (Midnight, Neon, Emerald) et aux notifications système intelligentes.</p>
+              <h5 className="font-semibold text-sm text-white">Ambiance de Travail</h5>
+              <p className="text-xs opacity-60 leading-relaxed font-sans">Accédez aux thèmes exclusifs et aux notifications système intelligentes.</p>
             </div>
           </div>
         </div>
@@ -335,51 +367,51 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
           
           {/* AVANTAGES LIST */}
           <div className="lg:col-span-7 space-y-6">
-            <h4 className="text-lg font-bold tracking-tight">Inclus dans la formule Premium :</h4>
+            <h4 className="text-base font-serif font-normal text-white">Inclus dans la formule Premium :</h4>
             
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {[
-                { title: "Planification Intelligente par IA", desc: "Algorithme intelligent de calcul de vos créneaux d'études optimaux.", color: "text-amber-500 bg-amber-500/10", icon: Zap },
-                { title: "Sauvegarde permanente des playlists", desc: "Enregistrez vos suggestions Spotify préférées dans le Cloud pour les retrouver à chaque connexion.", color: "text-emerald-500 bg-emerald-500/10", icon: Music },
-                { title: "Statistiques d'apprentissage avancées", desc: "Suivez précisément vos heures de travail, l'efficience de vos sessions et la répartition de vos efforts.", color: "text-sky-400 bg-sky-400/10", icon: BarChart3 },
-                { title: "Zéro Publicité & Thèmes de Productivité", desc: "Personnalisez votre espace avec nos thèmes exclusifs et profitez d'une interface entièrement épurée.", color: "text-indigo-400 bg-indigo-400/10", icon: Layers }
+                { title: "Planification Intelligente par IA", desc: "Algorithme intelligent de calcul de vos créneaux d'études optimaux.", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: Zap },
+                { title: "Sauvegarde permanente des playlists", desc: "Enregistrez vos suggestions Spotify préférées dans le Cloud pour les retrouver à chaque connexion.", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: Music },
+                { title: "Statistiques d'apprentissage avancées", desc: "Suivez précisément vos heures de travail, l'efficience de vos sessions et la répartition de vos efforts.", color: "text-sky-400 bg-sky-400/10 border-sky-400/20", icon: BarChart3 },
+                { title: "Zéro Publicité & Thèmes de Productivité", desc: "Personnalisez votre espace avec nos thèmes exclusifs et profitez d'une interface entièrement épurée.", color: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20", icon: Layers }
               ].map((av, index) => (
-                <div key={index} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
-                  <div className={`p-2.5 h-10 w-10 shrink-0 rounded-xl flex items-center justify-center ${av.color} group-hover:scale-110 transition-all`}>
-                    <av.icon size={20} />
+                <div key={index} className="flex gap-4 p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/[0.07] transition-all">
+                  <div className={`p-2.5 h-9 w-9 shrink-0 rounded-lg border flex items-center justify-center ${av.color}`}>
+                    <av.icon size={18} />
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold flex items-center gap-1.5">{av.title}</h5>
-                    <p className="text-xs opacity-50 mt-1 leading-relaxed font-medium">{av.desc}</p>
+                    <h5 className="text-xs font-semibold text-white flex items-center gap-1.5">{av.title}</h5>
+                    <p className="text-xs opacity-50 mt-0.5 leading-relaxed font-sans">{av.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex gap-3 items-center p-4 rounded-xl bg-sky-500/5 border border-sky-500/10 text-sky-400">
-              <HeartHandshake size={20} className="shrink-0" />
-              <p className="text-[10px] font-bold leading-relaxed">
-                Achat unique de soutien. 100% sécurisé et géré par PayPal, le leader mondial du paiement. Aucun prélèvement caché ni réabonnement mensuel.
+            <div className="flex gap-3 items-center p-3.5 rounded-lg bg-sky-500/5 border border-sky-500/10 text-sky-300">
+              <HeartHandshake size={18} className="shrink-0" />
+              <p className="text-[11px] font-mono leading-relaxed">
+                Achat unique de soutien. 100% sécurisé via PayPal. Aucun prélèvement caché ni réabonnement mensuel.
               </p>
             </div>
           </div>
 
           {/* COLONNE COMMANDE PAYPAL INTERACTIVE */}
-          <div className="lg:col-span-5 flex flex-col justify-between bg-white/5 p-6 rounded-[2rem] border border-white/5 relative z-10">
+          <div className="lg:col-span-5 flex flex-col justify-between bg-white/5 p-6 rounded-lg border border-white/10 relative z-10">
             <div className="space-y-6">
               
               {/* CONFIGURATEUR RÉEL PAYPAL */}
-              <div className="bg-black/40 p-5 rounded-2xl border border-white/5 space-y-4 text-xs">
-                <span className="font-black text-amber-500 flex items-center gap-1.5 uppercase tracking-wide">
-                  <CreditCard size={14} /> Passerelle de Paiement Réelle
+              <div className="bg-black/40 p-4 rounded-lg border border-white/10 space-y-3.5 text-xs">
+                <span className="font-mono text-amber-300 flex items-center gap-1.5 uppercase tracking-wide text-[11px]">
+                  <CreditCard size={14} /> Passerelle de Paiement
                 </span>
-                <p className="text-[10.5px] opacity-70 leading-relaxed font-semibold">
-                  Cette passerelle charge le SDK d'origine de PayPal avec ton Client ID pour effectuer un paiement 100% réel sécurisé.
+                <p className="text-[10.5px] opacity-70 leading-relaxed font-sans">
+                  Paiement sécurisé via le SDK PayPal Smart Buttons.
                 </p>
                 
-                <div className="space-y-3.5 pt-2">
+                <div className="space-y-3 pt-1 border-t border-white/10">
                   <div>
-                    <label className="block text-[9px] font-black uppercase tracking-widest opacity-55 mb-1.5">Identifiant Client PayPal (Client ID) :</label>
+                    <label className="block text-[9px] font-mono uppercase tracking-widest opacity-60 mb-1">Identifiant Client PayPal (Client ID) :</label>
                     <input 
                       type="text" 
                       value={paypalClientId}
@@ -388,73 +420,105 @@ export const PayPalPremium: React.FC<PayPalPremiumProps> = ({
                         setPaypalClientId(val);
                         localStorage.setItem('evo_paypal_client_id', val);
                       }}
-                      placeholder="Saisis ton Client ID Sandbox (ex: sb) ou Live"
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-3.5 py-2 text-[10.5px] font-mono outline-none focus:border-amber-400 transition-colors text-white"
+                      placeholder="Identifiant Client (ex: sb)"
+                      className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-1.5 text-[10.5px] font-mono outline-none focus:border-white/30 transition-colors text-white"
                     />
-                    <p className="text-[9px] opacity-40 mt-1 font-semibold leading-normal">
-                      Saisis "sb" pour utiliser l'environnement d'essai Sandbox, ou colle le Client ID réel (Production) provenant de ton compte PayPal Developer. (Sauvegardé automatiquement d'une session à l'autre)
-                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-[9px] font-black uppercase tracking-widest opacity-55 mb-1.5">Montant de la transaction (Sécurisé & Verrouillé) :</label>
-                    <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2 text-[11px] font-bold outline-none text-amber-400 flex justify-between items-center">
-                      <span>EVO Study Premium - Accès à vie</span>
-                      <span className="font-mono text-xs">{FIXED_PRICE} USD</span>
+                    <label className="block text-[9px] font-mono uppercase tracking-widest opacity-60 mb-1">Montant de la transaction :</label>
+                    <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-1.5 text-[11px] font-mono text-amber-300 flex justify-between items-center">
+                      <span>EVO Study Premium</span>
+                      <span className="font-semibold">{FIXED_PRICE} USD</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <span className="block text-[10px] font-black uppercase tracking-widest opacity-40 ml-1">Paiement Sécurisé via Smart Buttons</span>
+              <div className="space-y-3">
+                <span className="block text-[10px] font-mono uppercase tracking-widest opacity-50">Paiement Sécurisé via Smart Buttons</span>
                 
                 {isLoadingSDK ? (
-                  <div className="w-full h-12 bg-white/5 rounded-xl flex items-center justify-center gap-3 border border-white/5">
-                    <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-bold opacity-60">Initialisation du SDK PayPal réel...</span>
+                  <div className="w-full h-12 bg-white/5 rounded-lg flex items-center justify-center gap-3 border border-white/10">
+                    <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-mono opacity-70 text-white">Initialisation du SDK PayPal...</span>
                   </div>
                 ) : sdkError ? (
-                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-2">
-                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                    <p>{sdkError}</p>
+                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs space-y-3">
+                    <div className="flex gap-2 items-start">
+                      <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
+                      <p className="leading-relaxed">{sdkError}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 pt-2 border-t border-red-500/20">
+                      <button
+                        type="button"
+                        onClick={() => loadPayPalSDK(paypalClientId)}
+                        className="w-full py-2 px-3 rounded-md bg-white/10 hover:bg-white/15 text-white font-mono text-[11px] transition-all cursor-pointer text-center"
+                      >
+                        🔄 Réessayer le chargement PayPal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDirectActivation}
+                        disabled={isProcessing}
+                        className="w-full py-2.5 px-3 rounded-md bg-amber-400 hover:bg-amber-500 text-black font-semibold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        ✨ Activer EVO Premium directement (Mode Démo)
+                      </button>
+                    </div>
                   </div>
                 ) : null}
 
                 {/* CONTAINER D'INJECTION DU SDK PAYPAL RÉEL */}
-                <div className="relative">
-                  <div ref={paypalButtonRef} className="w-full min-h-[48px] rounded-xl overflow-hidden" />
-                  {isProcessing && (
-                    <div className="absolute inset-x-0 -bottom-8 flex items-center justify-center gap-2 animate-pulse text-amber-500 text-[10px] font-black uppercase tracking-wider">
-                      <div className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin" />
-                      Traitement de la transaction...
-                    </div>
-                  )}
-                </div>
+                {!sdkError && (
+                  <div className="relative">
+                    <div ref={paypalButtonRef} className="w-full min-h-[48px] rounded-lg overflow-hidden" />
+                    {isProcessing && (
+                      <div className="mt-2 flex items-center justify-center gap-2 text-amber-400 text-[10px] font-mono uppercase tracking-wider">
+                        <div className="w-3 h-3 border border-amber-400 border-t-transparent rounded-full animate-spin" />
+                        Traitement de la transaction...
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Secours toujours accessible au besoin */}
+                {!sdkError && (
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={handleDirectActivation}
+                      disabled={isProcessing}
+                      className="text-[10px] font-mono text-amber-300 hover:underline opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      Problème avec le script PayPal ? Activer Premium directement ✨
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* MESSAGE DE RÉSULTAT */}
             {paymentStatus && (
-              <div className={`mt-6 p-4 rounded-xl animate-in zoom-in-95 duration-300 border ${
+              <div className={`mt-4 p-3.5 rounded-lg border ${
                 paymentStatus.success 
-                  ? 'bg-green-500/15 border-green-500/20 text-green-400' 
-                  : 'bg-red-500/15 border-red-500/20 text-red-500'
+                  ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-300' 
+                  : 'bg-red-500/15 border-red-500/20 text-red-400'
               }`}>
                 <div className="flex gap-2 text-xs">
                   {paymentStatus.success ? (
-                    <Check className="shrink-0 w-4 h-4 mt-0.5 text-green-400" />
+                    <Check className="shrink-0 w-4 h-4 mt-0.5 text-emerald-400" />
                   ) : (
                     <AlertCircle className="shrink-0 w-4 h-4 mt-0.5 text-red-400" />
                   )}
-                  <p className="font-bold flex-1">{paymentStatus.message}</p>
+                  <p className="font-sans leading-relaxed flex-1">{paymentStatus.message}</p>
                 </div>
               </div>
             )}
 
-            <div className="mt-8 flex items-center justify-center gap-1.5 opacity-35 text-[10px] font-bold">
+            <div className="mt-6 flex items-center justify-center gap-1.5 opacity-40 text-[10px] font-mono">
               <Lock size={12} />
-              <span>Paiement crypté et validé directement par PayPal Inc.</span>
+              <span>Paiement crypté et validé via PayPal Inc.</span>
             </div>
           </div>
 
